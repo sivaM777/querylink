@@ -467,26 +467,23 @@ export default function Index() {
       const now = new Date();
 
       // Add analytics-based activities
-      if (analyticsResponse.ok) {
-        const analyticsData = await analyticsResponse.json();
-        if (analyticsData.system_popularity) {
-          analyticsData.system_popularity.forEach(
-            (system: any, index: number) => {
-              if (system.link_count > 0) {
-                const analyticsTime = new Date(
-                  now.getTime() - (index + 1) * 300000,
-                );
-                activities.push({
-                  type: "analytics",
-                  message: `${system.system}: ${system.link_count} successful interactions today`,
-                  time: getTimeAgo(analyticsTime),
-                  timestamp: analyticsTime.toISOString(),
-                  color: "bg-green-500",
-                });
-              }
-            },
-          );
-        }
+      if (analyticsData && !analyticsData.error && analyticsData.system_popularity) {
+        analyticsData.system_popularity.forEach(
+          (system: any, index: number) => {
+            if (system.link_count > 0) {
+              const analyticsTime = new Date(
+                now.getTime() - (index + 1) * 300000,
+              );
+              activities.push({
+                type: "analytics",
+                message: `${system.system}: ${system.link_count} successful interactions today`,
+                time: getTimeAgo(analyticsTime),
+                timestamp: analyticsTime.toISOString(),
+                color: "bg-green-500",
+              });
+            }
+          },
+        );
       }
 
       // Add team member activities
