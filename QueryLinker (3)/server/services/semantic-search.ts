@@ -45,7 +45,7 @@ export class SemanticSearchService {
       // Fallback: simple keyword SQL search when vectors are not ready
       const tokens = queryText.split(/[^a-z0-9]+/i).filter((t) => t.length > 2);
       const q = tokens.join(" ");
-      const rows = this.db.prepare(
+      const rows = this.getDb().prepare(
         `SELECT id, system, title, snippet, external_url, updated_at, tags, description
          FROM solutions
          WHERE (title LIKE ? OR description LIKE ? OR keywords LIKE ?)
@@ -72,7 +72,7 @@ export class SemanticSearchService {
     }
 
     const solutionIds = Array.from(bestBySolution.keys());
-    const rows = this.db.prepare(
+    const rows = this.getDb().prepare(
       `SELECT id, system, title, snippet, external_url, updated_at, tags, description FROM solutions WHERE id IN (${solutionIds.map(() => '?').join(',')})`
     ).all(...solutionIds) as any[];
 
