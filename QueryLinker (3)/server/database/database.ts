@@ -203,7 +203,7 @@ export class CacheModel {
   static cacheSuggestions(
     data: Omit<CachedSuggestion, "id" | "timestamp">,
   ): number {
-    const stmt = this.db.prepare(`
+    const stmt = this.getDb().prepare(`
       INSERT OR REPLACE INTO cached_suggestions 
       (incident_number, keywords, keywords_hash, suggestions_json, search_time_ms, total_found, expires_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
