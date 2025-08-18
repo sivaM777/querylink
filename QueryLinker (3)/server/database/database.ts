@@ -226,7 +226,7 @@ export class CacheModel {
    * Get cached suggestions by keywords hash
    */
   static getCachedSuggestions(keywordsHash: string): CachedSuggestion | null {
-    const stmt = this.db.prepare(`
+    const stmt = this.getDb().prepare(`
       SELECT * FROM cached_suggestions 
       WHERE keywords_hash = ? AND expires_at > CURRENT_TIMESTAMP
       ORDER BY timestamp DESC 
@@ -242,7 +242,7 @@ export class CacheModel {
   static getCachedSuggestionsByIncident(
     incidentNumber: string,
   ): CachedSuggestion | null {
-    const stmt = this.db.prepare(`
+    const stmt = this.getDb().prepare(`
       SELECT * FROM cached_suggestions 
       WHERE incident_number = ? AND expires_at > CURRENT_TIMESTAMP
       ORDER BY timestamp DESC 
@@ -256,7 +256,7 @@ export class CacheModel {
    * Clean up expired cache entries
    */
   static cleanupExpiredCache(): number {
-    const stmt = this.db.prepare(`
+    const stmt = this.getDb().prepare(`
       DELETE FROM cached_suggestions 
       WHERE expires_at < CURRENT_TIMESTAMP
     `);
@@ -269,15 +269,15 @@ export class CacheModel {
    * Get cache statistics
    */
   static getCacheStats() {
-    const totalCached = this.db
+    const totalCached = this.getDb()
       .prepare("SELECT COUNT(*) as count FROM cached_suggestions")
       .get() as { count: number };
-    const validCached = this.db
+    const validCached = this.getDb()
       .prepare(
         "SELECT COUNT(*) as count FROM cached_suggestions WHERE expires_at > CURRENT_TIMESTAMP",
       )
       .get() as { count: number };
-    const avgSearchTime = this.db
+    const avgSearchTime = this.getDb()
       .prepare(
         "SELECT AVG(search_time_ms) as avg_time FROM cached_suggestions WHERE search_time_ms IS NOT NULL",
       )
