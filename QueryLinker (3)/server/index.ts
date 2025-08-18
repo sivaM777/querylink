@@ -55,7 +55,7 @@ import {
   handleDeleteAccount,
   handleGetRecentActivity,
 } from "./routes/auth";
-import { getDatabase } from "./database/database";
+import { executeQuery } from "./database/database";
 import {
   handleEmailTest,
   handleEmailStatus,
