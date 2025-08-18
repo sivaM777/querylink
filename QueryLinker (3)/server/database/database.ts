@@ -44,12 +44,6 @@ export interface UserInteraction {
 }
 
 export class CacheModel {
-  private static getDb() {
-    const db = getDatabase();
-    if (!db) throw new Error("Database not available");
-    return db;
-  }
-
   /**
    * Generate hash for keywords to enable fast lookups
    */
@@ -63,26 +57,38 @@ export class CacheModel {
   /**
    * Store cached suggestions
    */
-  static cacheSuggestions(
+  static async cacheSuggestions(
     data: Omit<CachedSuggestion, "id" | "timestamp">,
-  ): number {
-    const stmt = this.getDb().prepare(`
-      INSERT OR REPLACE INTO cached_suggestions 
-      (incident_number, keywords, keywords_hash, suggestions_json, search_time_ms, total_found, expires_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
+  ): Promise<number> {
+    try {
+      const result = await executeQuery(`
+        INSERT INTO cached_suggestions
+        (incident_number, keywords, keywords_hash, suggestions_json, search_time_ms, total_found, expires_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        ON CONFLICT (keywords_hash) DO UPDATE SET
+          incident_number = EXCLUDED.incident_number,
+          keywords = EXCLUDED.keywords,
+          suggestions_json = EXCLUDED.suggestions_json,
+          search_time_ms = EXCLUDED.search_time_ms,
+          total_found = EXCLUDED.total_found,
+          expires_at = EXCLUDED.expires_at,
+          timestamp = CURRENT_TIMESTAMP
+        RETURNING id
+      `, [
+        data.incident_number,
+        data.keywords,
+        data.keywords_hash,
+        data.suggestions_json,
+        data.search_time_ms,
+        data.total_found,
+        data.expires_at,
+      ]);
 
-    const result = stmt.run(
-      data.incident_number,
-      data.keywords,
-      data.keywords_hash,
-      data.suggestions_json,
-      data.search_time_ms,
-      data.total_found,
-      data.expires_at,
-    );
-
-    return result.lastInsertRowid as number;
+      return result.rows[0]?.id || 0;
+    } catch (error) {
+      console.error("[CacheModel] Error caching suggestions:", error);
+      throw error;
+    }
   }
 
   /**
