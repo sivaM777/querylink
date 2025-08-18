@@ -1,0 +1,29 @@
+/* Working Theme System CSS */
+
+/* Ensure light theme has proper contrast */
+html.light {
+  background-color: #ffffff !important;
+}
+
+html.light body {
+  background-color: #ffffff !important;
+  color: #1e293b !important;
+}
+
+html.light .min-h-screen {
+  background-color: #ffffff !important;
+}
+
+/* Ensure dark theme has proper contrast */
+html.dark {
+  background-color: #0f172a !important;
+}
+
+html.dark body {
+  background-color: #0f172a !important;
+  color: #f1f5f9 !important;
+}
+
+html.dark .min-h-screen {
+  background-color: #0f172a !important;
+}
