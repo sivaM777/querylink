@@ -146,6 +146,81 @@ async function initializeSchema(): Promise<void> {
       CREATE INDEX IF NOT EXISTS idx_cached_suggestions_expires ON cached_suggestions(expires_at);
     `);
 
+    // Create additional tables for the QueryLinker functionality
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS system_sync_config (
+        id SERIAL PRIMARY KEY,
+        system VARCHAR(100) UNIQUE NOT NULL,
+        enabled BOOLEAN DEFAULT FALSE,
+        api_endpoint TEXT,
+        auth_config JSONB,
+        sync_interval INTEGER DEFAULT 3600,
+        last_sync TIMESTAMP,
+        last_sync_status VARCHAR(50),
+        last_sync_error TEXT,
+        total_synced INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS solutions (
+        id VARCHAR(255) PRIMARY KEY,
+        system VARCHAR(100) NOT NULL,
+        external_id VARCHAR(255),
+        title TEXT NOT NULL,
+        description TEXT,
+        content TEXT,
+        snippet TEXT,
+        status VARCHAR(50),
+        priority VARCHAR(50),
+        author VARCHAR(255),
+        assignee VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        resolved_at TIMESTAMP,
+        external_url TEXT,
+        tags JSONB DEFAULT '[]',
+        resolution TEXT,
+        steps JSONB DEFAULT '[]',
+        related_issues JSONB DEFAULT '[]',
+        attachments JSONB DEFAULT '[]',
+        keywords TEXT,
+        category VARCHAR(100),
+        severity VARCHAR(50),
+        metadata JSONB DEFAULT '{}',
+        sync_status VARCHAR(50) DEFAULT 'active'
+      );
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS solution_chunks (
+        id VARCHAR(255) PRIMARY KEY,
+        solution_id VARCHAR(255) REFERENCES solutions(id) ON DELETE CASCADE,
+        chunk_index INTEGER NOT NULL,
+        content TEXT NOT NULL,
+        embedding JSONB
+      );
+    `);
+
+    // Create indexes for better performance
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_solutions_system ON solutions(system);
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_solutions_status ON solutions(status);
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_solutions_sync_status ON solutions(sync_status);
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_solution_chunks_solution_id ON solution_chunks(solution_id);
+    `);
+
     console.log("[Database] PostgreSQL schema initialized successfully");
   } catch (error) {
     console.error("[Database] Failed to initialize schema:", error);
