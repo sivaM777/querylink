@@ -194,7 +194,7 @@ export class InteractionService {
    */
   async getInteractionTrends(days: number = 30): Promise<any[]> {
     try {
-      const trends = InteractionModel.getAnalytics(days);
+      const trends = await InteractionModel.getAnalytics(days);
 
       // Process trends data for charts
       const processedTrends = this.processTrendsData(trends);
