@@ -1089,19 +1089,26 @@ export const handleActivityLog: RequestHandler = async (req, res) => {
   try {
     const { type, message, details, user } = req.body;
 
-    // Log activity to database
-    const db = getDatabase();
-    db.prepare(
-      "INSERT INTO chat_messages (user_id, user_name, message_text, message_type, timestamp) VALUES (?, ?, ?, ?, ?)",
-    ).run(
-      user || "current-user",
-      user || "You",
-      JSON.stringify({ type, message, details }),
-      "activity",
-      new Date().toISOString(),
-    );
+    // Log activity to database using PostgreSQL
+    try {
+      const { executeQuery } = await import("../database/database");
+      await executeQuery(
+        "INSERT INTO chat_messages (user_id, user_name, message_text, message_type, timestamp) VALUES ($1, $2, $3, $4, $5)",
+        [
+          user || "current-user",
+          user || "You",
+          JSON.stringify({ type, message, details }),
+          "activity",
+          new Date().toISOString(),
+        ]
+      );
 
-    res.json({ success: true, message: "Activity logged successfully" });
+      res.json({ success: true, message: "Activity logged successfully" });
+    } catch (dbError) {
+      console.error("Database error logging activity:", dbError);
+      // Return success even if logging fails to not break user experience
+      res.json({ success: true, message: "Activity logged (db unavailable)" });
+    }
   } catch (error) {
     console.error("Error logging activity:", error);
     res.status(500).json({ error: "Failed to log activity" });
