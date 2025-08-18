@@ -34,7 +34,11 @@ export const INTEGRATIONS: Record<IntegrationKey, IntegrationInfo> = {
 };
 
 export class IntegrationService {
-  private db = getDatabase();
+  private getDb() {
+    const db = getDatabase();
+    if (!db) throw new Error("Database not available");
+    return db;
+  }
 
   list() {
     const rows = this.db.prepare(`SELECT system as key, enabled, last_sync, last_sync_status FROM system_sync_config`).all() as any[];
@@ -69,5 +73,3 @@ export class IntegrationService {
 }
 
 export const integrationService = new IntegrationService();
-
-
