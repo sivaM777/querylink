@@ -113,12 +113,11 @@ export function createServer() {
       // Update user activity timestamp in background (don't block the request)
       setImmediate(async () => {
         try {
-          const db = getDatabase();
-          db.prepare(`
+          await executeQuery(`
             UPDATE user_sessions
             SET last_activity = CURRENT_TIMESTAMP
-            WHERE token = ? AND expires_at > CURRENT_TIMESTAMP
-          `).run(token);
+            WHERE token = $1 AND expires_at > CURRENT_TIMESTAMP
+          `, [token]);
         } catch (error) {
           // Silently handle errors to not affect the main request
           console.error('[Middleware] Error updating user activity:', error);
