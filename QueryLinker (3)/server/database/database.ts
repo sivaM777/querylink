@@ -216,95 +216,120 @@ export class InteractionModel {
   /**
    * Get interactions for an incident
    */
-  static getInteractionsByIncident(incidentNumber: string): UserInteraction[] {
-    const stmt = this.getDb().prepare(`
-      SELECT * FROM user_interactions 
-      WHERE incident_number = ? 
-      ORDER BY timestamp DESC
-    `);
+  static async getInteractionsByIncident(incidentNumber: string): Promise<UserInteraction[]> {
+    try {
+      const result = await executeQuery(`
+        SELECT * FROM user_interactions
+        WHERE incident_number = $1
+        ORDER BY timestamp DESC
+      `, [incidentNumber]);
 
-    return stmt.all(incidentNumber) as UserInteraction[];
+      return result.rows;
+    } catch (error) {
+      console.error("[InteractionModel] Error getting interactions by incident:", error);
+      return [];
+    }
   }
 
   /**
    * Get interactions by user
    */
-  static getInteractionsByUser(
+  static async getInteractionsByUser(
     userId: string,
     limit: number = 50,
-  ): UserInteraction[] {
-    const stmt = this.getDb().prepare(`
-      SELECT * FROM user_interactions 
-      WHERE user_id = ? 
-      ORDER BY timestamp DESC 
-      LIMIT ?
-    `);
+  ): Promise<UserInteraction[]> {
+    try {
+      const result = await executeQuery(`
+        SELECT * FROM user_interactions
+        WHERE user_id = $1
+        ORDER BY timestamp DESC
+        LIMIT $2
+      `, [userId, limit]);
 
-    return stmt.all(userId, limit) as UserInteraction[];
+      return result.rows;
+    } catch (error) {
+      console.error("[InteractionModel] Error getting interactions by user:", error);
+      return [];
+    }
   }
 
   /**
    * Get analytics data
    */
-  static getAnalytics(days: number = 30) {
-    const stmt = this.getDb().prepare(`
-      SELECT 
-        system,
-        COUNT(*) as total_interactions,
-        COUNT(DISTINCT incident_number) as unique_incidents,
-        COUNT(DISTINCT user_id) as unique_users,
-        DATE(timestamp) as interaction_date
-      FROM user_interactions 
-      WHERE timestamp >= datetime('now', '-${days} days')
-      AND action_type = 'link'
-      GROUP BY system, DATE(timestamp)
-      ORDER BY interaction_date DESC, total_interactions DESC
-    `);
+  static async getAnalytics(days: number = 30) {
+    try {
+      const result = await executeQuery(`
+        SELECT
+          system,
+          COUNT(*) as total_interactions,
+          COUNT(DISTINCT incident_number) as unique_incidents,
+          COUNT(DISTINCT user_id) as unique_users,
+          DATE(timestamp) as interaction_date
+        FROM user_interactions
+        WHERE timestamp >= CURRENT_TIMESTAMP - INTERVAL '${days} days'
+        AND action_type = 'link'
+        GROUP BY system, DATE(timestamp)
+        ORDER BY interaction_date DESC, total_interactions DESC
+      `);
 
-    return stmt.all();
+      return result.rows;
+    } catch (error) {
+      console.error("[InteractionModel] Error getting analytics:", error);
+      return [];
+    }
   }
 
   /**
    * Get system popularity rankings
    */
-  static getSystemPopularity(days: number = 30) {
-    const stmt = this.getDb().prepare(`
-      SELECT 
-        system,
-        COUNT(*) as link_count,
-        COUNT(DISTINCT incident_number) as incident_count,
-        COUNT(DISTINCT user_id) as user_count,
-        ROUND(AVG(CASE WHEN action_type = 'link' THEN 1.0 ELSE 0.0 END) * 100, 2) as link_rate
-      FROM user_interactions 
-      WHERE timestamp >= datetime('now', '-${days} days')
-      GROUP BY system
-      ORDER BY link_count DESC
-    `);
+  static async getSystemPopularity(days: number = 30) {
+    try {
+      const result = await executeQuery(`
+        SELECT
+          system,
+          COUNT(*) as link_count,
+          COUNT(DISTINCT incident_number) as incident_count,
+          COUNT(DISTINCT user_id) as user_count,
+          ROUND(AVG(CASE WHEN action_type = 'link' THEN 1.0 ELSE 0.0 END) * 100, 2) as link_rate
+        FROM user_interactions
+        WHERE timestamp >= CURRENT_TIMESTAMP - INTERVAL '${days} days'
+        GROUP BY system
+        ORDER BY link_count DESC
+      `);
 
-    return stmt.all();
+      return result.rows;
+    } catch (error) {
+      console.error("[InteractionModel] Error getting system popularity:", error);
+      return [];
+    }
   }
 
   /**
    * Get most effective suggestions
    */
-  static getMostEffectiveSuggestions(limit: number = 10) {
-    const stmt = this.getDb().prepare(`
-      SELECT 
-        suggestion_id,
-        system,
-        suggestion_title,
-        COUNT(*) as link_count,
-        COUNT(DISTINCT incident_number) as incident_count,
-        COUNT(DISTINCT user_id) as user_count
-      FROM user_interactions 
-      WHERE action_type = 'link'
-      AND timestamp >= datetime('now', '-30 days')
-      GROUP BY suggestion_id, system, suggestion_title
-      ORDER BY link_count DESC, incident_count DESC
-      LIMIT ?
-    `);
+  static async getMostEffectiveSuggestions(limit: number = 10) {
+    try {
+      const result = await executeQuery(`
+        SELECT
+          suggestion_id,
+          system,
+          suggestion_title,
+          COUNT(*) as link_count,
+          COUNT(DISTINCT incident_number) as incident_count,
+          COUNT(DISTINCT user_id) as user_count
+        FROM user_interactions
+        WHERE action_type = 'link'
+        AND timestamp >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+        GROUP BY suggestion_id, system, suggestion_title
+        ORDER BY link_count DESC, incident_count DESC
+        LIMIT $1
+      `, [limit]);
 
-    return stmt.all(limit);
+      return result.rows;
+    } catch (error) {
+      console.error("[InteractionModel] Error getting effective suggestions:", error);
+      return [];
+    }
   }
 }
 
