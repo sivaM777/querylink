@@ -411,4 +411,5 @@ try {
   initializeDatabase();
 } catch (error) {
   console.error("[Database] Failed to initialize on startup:", error);
+  console.warn("[Database] Application will continue without database functionality");
 }
