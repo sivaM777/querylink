@@ -20,7 +20,8 @@
     "test:gmail": "node server/test-gmail-smtp.js",
     "format.fix": "prettier --write .",
     "typecheck": "tsc",
-    "db:migrate": "node server/database/sqlite-export.js"
+    "db:migrate": "node server/database/sqlite-export.js",
+    "db:complete-migrate": "node server/database/complete-migration.js"
   },
   "dependencies": {
     "@sendgrid/mail": "^8.1.5",
