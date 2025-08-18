@@ -7,7 +7,11 @@ function toJsonVector(vec: number[]): string { return JSON.stringify(vec); }
 function fromJsonVector(s?: string | null): number[] { return s ? JSON.parse(s) : []; }
 
 export class ExpressSqliteRAGService {
-  private db = getDatabase();
+  private getDb() {
+    const db = getDatabase();
+    if (!db) throw new Error("Database not available");
+    return db;
+  }
 
   upsertRecord(systemName: string, externalId: string, title: string, body: string, url: string, tags: string[] = []): number {
     let sys = this.db.prepare(`SELECT system_id FROM systems WHERE name = ?`).get(systemName) as any;
@@ -61,5 +65,3 @@ export class ExpressSqliteRAGService {
 }
 
 export const expressSqliteRag = new ExpressSqliteRAGService();
-
-
