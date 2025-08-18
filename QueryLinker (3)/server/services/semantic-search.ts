@@ -32,9 +32,13 @@ export class SemanticSearchService {
   }
 
   async indexAll(): Promise<void> {
-    const ids = this.getDb().prepare(`SELECT id FROM solutions WHERE sync_status = 'active'`).all() as { id: string }[];
-    for (const { id } of ids) {
-      await this.ensureIndexed(id);
+    try {
+      const ids = this.getDb().prepare(`SELECT id FROM solutions WHERE sync_status = 'active'`).all() as { id: string }[];
+      for (const { id } of ids) {
+        await this.ensureIndexed(id);
+      }
+    } catch (error) {
+      console.warn("[SemanticSearch] Database not available for indexing:", error.message);
     }
   }
 
