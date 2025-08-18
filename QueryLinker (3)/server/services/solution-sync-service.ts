@@ -274,15 +274,15 @@ class SolutionSyncService {
   /**
    * Get system configurations
    */
-  private getSystemConfigs(): SystemConfig[] {
+  private async getSystemConfigs(): Promise<SystemConfig[]> {
     try {
-      const stmt = this.getDb().prepare(`
+      const result = await this.executeQuery(`
         SELECT system, enabled, api_endpoint, auth_config, sync_interval
         FROM system_sync_config
-        WHERE enabled = 1
+        WHERE enabled = true
       `);
 
-      return stmt.all().map(row => ({
+      return result.rows.map((row: any) => ({
         ...row,
         auth_config: row.auth_config ? JSON.parse(row.auth_config) : {}
       }));
