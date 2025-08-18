@@ -134,16 +134,16 @@ class SolutionSyncService {
    */
   async syncAllSystems(): Promise<void> {
     console.log("[SolutionSync] Starting sync for all systems...");
-    
+
     try {
-      const configs = this.getSystemConfigs();
-      
+      const configs = await this.getSystemConfigs();
+
       for (const config of configs) {
         if (config.enabled) {
           await this.syncSystem(config);
         }
       }
-      
+
       console.log("[SolutionSync] Completed sync for all systems");
     } catch (error) {
       console.error("[SolutionSync] Error during sync:", error);
