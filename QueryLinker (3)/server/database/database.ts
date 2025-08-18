@@ -181,7 +181,11 @@ export interface UserInteraction {
 }
 
 export class CacheModel {
-  private static db = getDatabase();
+  private static getDb() {
+    const db = getDatabase();
+    if (!db) throw new Error("Database not available");
+    return db;
+  }
 
   /**
    * Generate hash for keywords to enable fast lookups
