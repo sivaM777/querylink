@@ -38,9 +38,14 @@ export class VectorSearchService {
   }
 
   search(queryEmbedding: number[], limit: number = 20): VectorMatch[] {
-    const rows = this.getDb().prepare(
-      `SELECT id as chunk_id, solution_id, content, embedding FROM solution_chunks`
-    ).all() as { chunk_id: string; solution_id: string; content: string; embedding: string }[];
+    try {
+      const rows = this.getDb().prepare(
+        `SELECT id as chunk_id, solution_id, content, embedding FROM solution_chunks`
+      ).all() as { chunk_id: string; solution_id: string; content: string; embedding: string }[];
+    } catch (error) {
+      console.error("[VectorSearchService] Database error in search:", error);
+      return []; // Return empty results if database is not available
+    }
 
     const matches: VectorMatch[] = [];
     for (const r of rows) {
