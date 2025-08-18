@@ -617,21 +617,26 @@ openssl s_client -connect portal.company.com:443 -servername portal.company.com
    * Get solution by ID
    */
   getSolutionById(solutionId: string): any {
-    const stmt = this.getDb().prepare(`
-      SELECT * FROM solutions WHERE id = ?
-    `);
-    
-    const solution = stmt.get(solutionId);
-    if (solution) {
-      // Parse JSON fields
-      solution.tags = JSON.parse(solution.tags || '[]');
-      solution.steps = JSON.parse(solution.steps || '[]');
-      solution.related_issues = JSON.parse(solution.related_issues || '[]');
-      solution.attachments = JSON.parse(solution.attachments || '[]');
-      solution.metadata = JSON.parse(solution.metadata || '{}');
+    try {
+      const stmt = this.getDb().prepare(`
+        SELECT * FROM solutions WHERE id = ?
+      `);
+
+      const solution = stmt.get(solutionId);
+      if (solution) {
+        // Parse JSON fields
+        solution.tags = JSON.parse(solution.tags || '[]');
+        solution.steps = JSON.parse(solution.steps || '[]');
+        solution.related_issues = JSON.parse(solution.related_issues || '[]');
+        solution.attachments = JSON.parse(solution.attachments || '[]');
+        solution.metadata = JSON.parse(solution.metadata || '{}');
+      }
+
+      return solution;
+    } catch (error) {
+      console.error("[SolutionSyncService] Database error in getSolutionById:", error);
+      return null; // Return null if database is not available
     }
-    
-    return solution;
   }
 
   /**
