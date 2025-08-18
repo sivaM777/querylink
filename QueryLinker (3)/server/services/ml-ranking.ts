@@ -376,7 +376,7 @@ export class MLRankingEngine {
    */
   private async getSystemPopularity(system: string): Promise<number> {
     try {
-      const popularity = InteractionModel.getSystemPopularity(30);
+      const popularity = await InteractionModel.getSystemPopularity(30);
       const systemData = popularity.find((s: any) => s.system === system);
       return systemData ? Math.min(1, systemData.link_count / 100) : 0.5;
     } catch {
