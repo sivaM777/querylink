@@ -40,7 +40,11 @@ interface SystemConfig {
 }
 
 class SolutionSyncService {
-  private db = getDatabase();
+  private getDb() {
+    const db = getDatabase();
+    if (!db) throw new Error("Database not available");
+    return db;
+  }
 
   constructor() {
     this.startPeriodicSync();
