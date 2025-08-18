@@ -23,7 +23,7 @@ export class SemanticSearchService {
   }
 
   async ensureIndexed(solutionId: string): Promise<void> {
-    const row = this.db.prepare(`SELECT content FROM solutions WHERE id = ?`).get(solutionId) as { content?: string } | undefined;
+    const row = this.getDb().prepare(`SELECT content FROM solutions WHERE id = ?`).get(solutionId) as { content?: string } | undefined;
     if (!row || !row.content) return;
 
     const chunks = await import("./chunker").then((m) => m.chunkText(row.content!));
@@ -32,7 +32,7 @@ export class SemanticSearchService {
   }
 
   async indexAll(): Promise<void> {
-    const ids = this.db.prepare(`SELECT id FROM solutions WHERE sync_status = 'active'`).all() as { id: string }[];
+    const ids = this.getDb().prepare(`SELECT id FROM solutions WHERE sync_status = 'active'`).all() as { id: string }[];
     for (const { id } of ids) {
       await this.ensureIndexed(id);
     }
