@@ -94,70 +94,92 @@ export class CacheModel {
   /**
    * Get cached suggestions by keywords hash
    */
-  static getCachedSuggestions(keywordsHash: string): CachedSuggestion | null {
-    const stmt = this.getDb().prepare(`
-      SELECT * FROM cached_suggestions 
-      WHERE keywords_hash = ? AND expires_at > CURRENT_TIMESTAMP
-      ORDER BY timestamp DESC 
-      LIMIT 1
-    `);
+  static async getCachedSuggestions(keywordsHash: string): Promise<CachedSuggestion | null> {
+    try {
+      const result = await executeQuery(`
+        SELECT * FROM cached_suggestions
+        WHERE keywords_hash = $1 AND expires_at > CURRENT_TIMESTAMP
+        ORDER BY timestamp DESC
+        LIMIT 1
+      `, [keywordsHash]);
 
-    return stmt.get(keywordsHash) as CachedSuggestion | null;
+      return result.rows[0] || null;
+    } catch (error) {
+      console.error("[CacheModel] Error getting cached suggestions:", error);
+      return null;
+    }
   }
 
   /**
    * Get cached suggestions by incident number
    */
-  static getCachedSuggestionsByIncident(
+  static async getCachedSuggestionsByIncident(
     incidentNumber: string,
-  ): CachedSuggestion | null {
-    const stmt = this.getDb().prepare(`
-      SELECT * FROM cached_suggestions 
-      WHERE incident_number = ? AND expires_at > CURRENT_TIMESTAMP
-      ORDER BY timestamp DESC 
-      LIMIT 1
-    `);
+  ): Promise<CachedSuggestion | null> {
+    try {
+      const result = await executeQuery(`
+        SELECT * FROM cached_suggestions
+        WHERE incident_number = $1 AND expires_at > CURRENT_TIMESTAMP
+        ORDER BY timestamp DESC
+        LIMIT 1
+      `, [incidentNumber]);
 
-    return stmt.get(incidentNumber) as CachedSuggestion | null;
+      return result.rows[0] || null;
+    } catch (error) {
+      console.error("[CacheModel] Error getting cached suggestions by incident:", error);
+      return null;
+    }
   }
 
   /**
    * Clean up expired cache entries
    */
-  static cleanupExpiredCache(): number {
-    const stmt = this.getDb().prepare(`
-      DELETE FROM cached_suggestions 
-      WHERE expires_at < CURRENT_TIMESTAMP
-    `);
+  static async cleanupExpiredCache(): Promise<number> {
+    try {
+      const result = await executeQuery(`
+        DELETE FROM cached_suggestions
+        WHERE expires_at < CURRENT_TIMESTAMP
+      `);
 
-    const result = stmt.run();
-    return result.changes;
+      return result.rowCount || 0;
+    } catch (error) {
+      console.error("[CacheModel] Error cleaning up expired cache:", error);
+      return 0;
+    }
   }
 
   /**
    * Get cache statistics
    */
-  static getCacheStats() {
-    const totalCached = this.getDb()
-      .prepare("SELECT COUNT(*) as count FROM cached_suggestions")
-      .get() as { count: number };
-    const validCached = this.getDb()
-      .prepare(
-        "SELECT COUNT(*) as count FROM cached_suggestions WHERE expires_at > CURRENT_TIMESTAMP",
-      )
-      .get() as { count: number };
-    const avgSearchTime = this.getDb()
-      .prepare(
-        "SELECT AVG(search_time_ms) as avg_time FROM cached_suggestions WHERE search_time_ms IS NOT NULL",
-      )
-      .get() as { avg_time: number };
+  static async getCacheStats() {
+    try {
+      const totalResult = await executeQuery("SELECT COUNT(*) as count FROM cached_suggestions");
+      const validResult = await executeQuery(
+        "SELECT COUNT(*) as count FROM cached_suggestions WHERE expires_at > CURRENT_TIMESTAMP"
+      );
+      const avgResult = await executeQuery(
+        "SELECT AVG(search_time_ms) as avg_time FROM cached_suggestions WHERE search_time_ms IS NOT NULL"
+      );
 
-    return {
-      total_cached: totalCached.count,
-      valid_cached: validCached.count,
-      expired_cached: totalCached.count - validCached.count,
-      avg_search_time_ms: Math.round(avgSearchTime.avg_time || 0),
-    };
+      const totalCached = totalResult.rows[0]?.count || 0;
+      const validCached = validResult.rows[0]?.count || 0;
+      const avgSearchTime = avgResult.rows[0]?.avg_time || 0;
+
+      return {
+        total_cached: parseInt(totalCached),
+        valid_cached: parseInt(validCached),
+        expired_cached: parseInt(totalCached) - parseInt(validCached),
+        avg_search_time_ms: Math.round(avgSearchTime),
+      };
+    } catch (error) {
+      console.error("[CacheModel] Error getting cache stats:", error);
+      return {
+        total_cached: 0,
+        valid_cached: 0,
+        expired_cached: 0,
+        avg_search_time_ms: 0,
+      };
+    }
   }
 }
 
