@@ -1098,14 +1098,13 @@ export const handleAppleOAuth: RequestHandler = async (req, res) => {
         fullName: existingUser.full_name,
         role: existingUser.role,
         avatarUrl: existingUser.avatar_url,
-        preferences: existingUser.preferences
-          ? JSON.parse(existingUser.preferences)
-          : {},
+        preferences: existingUser.preferences || {},
       },
       token,
     });
   } catch (error) {
     console.error("Apple OAuth error:", error);
+    console.error("Error stack:", error.stack);
     res.status(500).json({
       success: false,
       message: "Internal server error",
