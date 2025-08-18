@@ -293,7 +293,11 @@ export class CacheModel {
 }
 
 export class InteractionModel {
-  private static db = getDatabase();
+  private static getDb() {
+    const db = getDatabase();
+    if (!db) throw new Error("Database not available");
+    return db;
+  }
 
   /**
    * Record user interaction
@@ -301,7 +305,7 @@ export class InteractionModel {
   static recordInteraction(
     data: Omit<UserInteraction, "interaction_id" | "timestamp">,
   ): number {
-    const stmt = this.db.prepare(`
+    const stmt = this.getDb().prepare(`
       INSERT INTO user_interactions 
       (user_id, incident_number, suggestion_id, system, suggestion_title, suggestion_link, action_type)
       VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -324,7 +328,7 @@ export class InteractionModel {
    * Get interactions for an incident
    */
   static getInteractionsByIncident(incidentNumber: string): UserInteraction[] {
-    const stmt = this.db.prepare(`
+    const stmt = this.getDb().prepare(`
       SELECT * FROM user_interactions 
       WHERE incident_number = ? 
       ORDER BY timestamp DESC
@@ -340,7 +344,7 @@ export class InteractionModel {
     userId: string,
     limit: number = 50,
   ): UserInteraction[] {
-    const stmt = this.db.prepare(`
+    const stmt = this.getDb().prepare(`
       SELECT * FROM user_interactions 
       WHERE user_id = ? 
       ORDER BY timestamp DESC 
@@ -354,7 +358,7 @@ export class InteractionModel {
    * Get analytics data
    */
   static getAnalytics(days: number = 30) {
-    const stmt = this.db.prepare(`
+    const stmt = this.getDb().prepare(`
       SELECT 
         system,
         COUNT(*) as total_interactions,
@@ -375,7 +379,7 @@ export class InteractionModel {
    * Get system popularity rankings
    */
   static getSystemPopularity(days: number = 30) {
-    const stmt = this.db.prepare(`
+    const stmt = this.getDb().prepare(`
       SELECT 
         system,
         COUNT(*) as link_count,
@@ -395,7 +399,7 @@ export class InteractionModel {
    * Get most effective suggestions
    */
   static getMostEffectiveSuggestions(limit: number = 10) {
-    const stmt = this.db.prepare(`
+    const stmt = this.getDb().prepare(`
       SELECT 
         suggestion_id,
         system,
