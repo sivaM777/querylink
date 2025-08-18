@@ -992,7 +992,6 @@ export const handleGoogleOAuth: RequestHandler = async (req, res) => {
 // OAuth Apple login
 export const handleAppleOAuth: RequestHandler = async (req, res) => {
   try {
-    console.log("[Auth] Apple OAuth request:", JSON.stringify(req.body));
     const { identityToken, user } = req.body;
 
     if (!identityToken) {
