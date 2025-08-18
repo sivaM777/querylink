@@ -333,10 +333,4 @@ export class InteractionModel {
   }
 }
 
-// Initialize database on module load
-try {
-  initializeDatabase();
-} catch (error) {
-  console.error("[Database] Failed to initialize on startup:", error);
-  console.warn("[Database] Application will continue without database functionality");
-}
+// PostgreSQL initialization is handled automatically in postgres-database.ts
