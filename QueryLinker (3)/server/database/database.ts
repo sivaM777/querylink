@@ -142,9 +142,14 @@ function initializeDefaultData(database: Database.Database) {
   }
 }
 
-export function getDatabase(): Database.Database {
+export function getDatabase(): Database.Database | null {
   if (!db) {
-    return initializeDatabase();
+    try {
+      return initializeDatabase();
+    } catch (error) {
+      console.warn("[Database] Cannot get database - initialization failed:", error);
+      return null;
+    }
   }
   return db;
 }
