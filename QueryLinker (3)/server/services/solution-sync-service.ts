@@ -221,7 +221,7 @@ class SolutionSyncService {
    * Store solution in database
    */
   private async storeSolution(solution: Solution): Promise<void> {
-    const stmt = this.db.prepare(`
+    const stmt = this.getDb().prepare(`
       INSERT OR REPLACE INTO solutions (
         id, system, external_id, title, description, content, snippet,
         status, priority, author, assignee, created_at, updated_at, resolved_at,
@@ -271,7 +271,7 @@ class SolutionSyncService {
    * Get system configurations
    */
   private getSystemConfigs(): SystemConfig[] {
-    const stmt = this.db.prepare(`
+    const stmt = this.getDb().prepare(`
       SELECT system, enabled, api_endpoint, auth_config, sync_interval
       FROM system_sync_config
       WHERE enabled = 1
@@ -287,7 +287,7 @@ class SolutionSyncService {
    * Update sync status for a system
    */
   private updateSyncStatus(system: string, status: string, count: number, error?: string): void {
-    const stmt = this.db.prepare(`
+    const stmt = this.getDb().prepare(`
       UPDATE system_sync_config 
       SET last_sync = CURRENT_TIMESTAMP, 
           last_sync_status = ?, 
@@ -608,7 +608,7 @@ openssl s_client -connect portal.company.com:443 -servername portal.company.com
    * Get solution by ID
    */
   getSolutionById(solutionId: string): any {
-    const stmt = this.db.prepare(`
+    const stmt = this.getDb().prepare(`
       SELECT * FROM solutions WHERE id = ?
     `);
     
@@ -661,7 +661,7 @@ openssl s_client -connect portal.company.com:443 -servername portal.company.com
    * Get sync status for all systems
    */
   getSyncStatus(): any[] {
-    const stmt = this.db.prepare(`
+    const stmt = this.getDb().prepare(`
       SELECT * FROM system_sync_config ORDER BY system
     `);
     
