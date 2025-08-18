@@ -2,7 +2,7 @@ import { RequestHandler } from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
-import { getDatabase } from "../database/database";
+import { getDatabase, executeQuery } from "../database/database";
 import { enhancedEmailService } from "../services/enhanced-email-service";
 import { demoEmailService } from "../services/demo-email-service";
 import { instantEmailService } from "../services/instant-email-service";
