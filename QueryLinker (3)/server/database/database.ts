@@ -15,17 +15,7 @@ import { getDatabase, executeQuery, PreparedStatement } from './postgres-databas
 
 // Migration functions removed - PostgreSQL schema is handled in postgres-database.ts
 
-export function getDatabase(): Database.Database | null {
-  if (!db) {
-    try {
-      return initializeDatabase();
-    } catch (error) {
-      console.warn("[Database] Cannot get database - initialization failed:", error);
-      return null;
-    }
-  }
-  return db;
-}
+// getDatabase is re-exported from postgres-database.ts
 
 // Database Models and Operations
 
