@@ -16,7 +16,11 @@ interface Suggestion {
 }
 
 export class SemanticSearchService {
-  private db = getDatabase();
+  private getDb() {
+    const db = getDatabase();
+    if (!db) throw new Error("Database not available");
+    return db;
+  }
 
   async ensureIndexed(solutionId: string): Promise<void> {
     const row = this.db.prepare(`SELECT content FROM solutions WHERE id = ?`).get(solutionId) as { content?: string } | undefined;
@@ -107,5 +111,3 @@ export class SemanticSearchService {
 }
 
 export const semanticSearch = new SemanticSearchService();
-
-
