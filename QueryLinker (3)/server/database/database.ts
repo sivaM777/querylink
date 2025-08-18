@@ -11,38 +11,7 @@ export {
 import crypto from "crypto";
 import { getDatabase, executeQuery, PreparedStatement } from './postgres-database';
 
-export function initializeDatabase(): Database.Database {
-  try {
-    // Use SQLite database file
-    const dbPath =
-      process.env.DATABASE_PATH || join(__dirname, "../../data/querylinker.db");
-
-    db = new Database(dbPath);
-    db.pragma("journal_mode = WAL"); // Enable WAL mode for better performance
-    db.pragma("foreign_keys = ON"); // Enable foreign key constraints
-
-    // First, run any necessary migrations before applying the full schema
-    runActivityMigration(db);
-
-    // Then run the complete schema
-    const schema = readFileSync(join(__dirname, "schema.sql"), "utf8");
-    db.exec(schema);
-
-    // Add solutions schema
-    const solutionsSchema = readFileSync(join(__dirname, "solutions-schema.sql"), "utf8");
-    db.exec(solutionsSchema);
-    console.log("[Database] Solutions schema initialized successfully");
-
-    // Initialize default data if needed
-    initializeDefaultData(db);
-
-    console.log("[Database] QueryLinker database initialized successfully");
-    return db;
-  } catch (error) {
-    console.error("[Database] Failed to initialize database:", error);
-    throw error;
-  }
-}
+// PostgreSQL initialization is handled in postgres-database.ts
 
 function runActivityMigration(database: Database.Database) {
   try {
