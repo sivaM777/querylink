@@ -219,7 +219,7 @@ export class InteractionService {
    */
   async getMostEffectiveSuggestions(limit: number = 10): Promise<any[]> {
     try {
-      const suggestions = InteractionModel.getMostEffectiveSuggestions(limit);
+      const suggestions = await InteractionModel.getMostEffectiveSuggestions(limit);
 
       // Enhance with effectiveness metrics
       const enhancedSuggestions = suggestions.map((suggestion: any) => ({
