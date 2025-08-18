@@ -184,35 +184,33 @@ export class CacheModel {
 }
 
 export class InteractionModel {
-  private static getDb() {
-    const db = getDatabase();
-    if (!db) throw new Error("Database not available");
-    return db;
-  }
-
   /**
    * Record user interaction
    */
-  static recordInteraction(
+  static async recordInteraction(
     data: Omit<UserInteraction, "interaction_id" | "timestamp">,
-  ): number {
-    const stmt = this.getDb().prepare(`
-      INSERT INTO user_interactions 
-      (user_id, incident_number, suggestion_id, system, suggestion_title, suggestion_link, action_type)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
+  ): Promise<number> {
+    try {
+      const result = await executeQuery(`
+        INSERT INTO user_interactions
+        (user_id, incident_number, suggestion_id, system, suggestion_title, suggestion_link, action_type)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING interaction_id
+      `, [
+        data.user_id,
+        data.incident_number,
+        data.suggestion_id,
+        data.system,
+        data.suggestion_title,
+        data.suggestion_link,
+        data.action_type || "link",
+      ]);
 
-    const result = stmt.run(
-      data.user_id,
-      data.incident_number,
-      data.suggestion_id,
-      data.system,
-      data.suggestion_title,
-      data.suggestion_link,
-      data.action_type || "link",
-    );
-
-    return result.lastInsertRowid as number;
+      return result.rows[0]?.interaction_id || 0;
+    } catch (error) {
+      console.error("[InteractionModel] Error recording interaction:", error);
+      throw error;
+    }
   }
 
   /**
