@@ -40,10 +40,14 @@ interface SystemConfig {
 }
 
 class SolutionSyncService {
-  private getDb() {
-    const db = getDatabase();
-    if (!db) throw new Error("Database not available");
-    return db;
+  private async executeQuery(query: string, params?: any[]): Promise<any> {
+    try {
+      const { executeQuery } = await import("../database/database");
+      return await executeQuery(query, params);
+    } catch (error) {
+      console.warn("[SolutionSync] Database not available:", error.message);
+      throw new Error("Database not available");
+    }
   }
 
   constructor() {
