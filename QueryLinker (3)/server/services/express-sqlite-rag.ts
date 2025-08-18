@@ -14,15 +14,15 @@ export class ExpressSqliteRAGService {
   }
 
   upsertRecord(systemName: string, externalId: string, title: string, body: string, url: string, tags: string[] = []): number {
-    let sys = this.db.prepare(`SELECT system_id FROM systems WHERE name = ?`).get(systemName) as any;
+    let sys = this.getDb().prepare(`SELECT system_id FROM systems WHERE name = ?`).get(systemName) as any;
     if (!sys) {
-      this.db.prepare(`INSERT INTO systems(name, base_url) VALUES(?, ?)`).run(systemName, null);
-      sys = this.db.prepare(`SELECT system_id FROM systems WHERE name = ?`).get(systemName) as any;
+      this.getDb().prepare(`INSERT INTO systems(name, base_url) VALUES(?, ?)`).run(systemName, null);
+      sys = this.getDb().prepare(`SELECT system_id FROM systems WHERE name = ?`).get(systemName) as any;
     }
-    const insert = this.db.prepare(`INSERT OR REPLACE INTO records(system_id, external_id, title, body, tags, url, status, source_type, created_at, updated_at)
+    const insert = this.getDb().prepare(`INSERT OR REPLACE INTO records(system_id, external_id, title, body, tags, url, status, source_type, created_at, updated_at)
       VALUES(?, ?, ?, ?, ?, ?, 'active', 'doc', COALESCE((SELECT created_at FROM records WHERE system_id=? AND external_id=?), CURRENT_TIMESTAMP), CURRENT_TIMESTAMP)`);
     insert.run(sys.system_id, externalId, title, body, JSON.stringify(tags), url, sys.system_id, externalId);
-    const row = this.db.prepare(`SELECT record_id FROM records WHERE system_id=? AND external_id=?`).get(sys.system_id, externalId) as any;
+    const row = this.getDb().prepare(`SELECT record_id FROM records WHERE system_id=? AND external_id=?`).get(sys.system_id, externalId) as any;
     return row.record_id as number;
   }
 
@@ -35,7 +35,7 @@ export class ExpressSqliteRAGService {
     }
     // also store a single pooled embedding row (optional)
     const pooled = embs[0] || [];
-    this.db.prepare(`INSERT INTO record_embeddings(record_id, vector, model) VALUES(?, ?, ?)`).run(recordId, toJsonVector(pooled), process.env.EMBEDDING_MODEL || 'dev-hash');
+    this.getDb().prepare(`INSERT INTO record_embeddings(record_id, vector, model) VALUES(?, ?, ?)`).run(recordId, toJsonVector(pooled), process.env.EMBEDDING_MODEL || 'dev-hash');
   }
 
   async searchIncident(text: string, limit: number = 10, systemFilter?: string[]) {
@@ -56,7 +56,7 @@ export class ExpressSqliteRAGService {
       sql += ` AND s.name IN (${systemFilter.map(()=>'?').join(',')})`;
       params.push(...systemFilter);
     }
-    const rows = this.db.prepare(sql).all(...params) as any[];
+    const rows = this.getDb().prepare(sql).all(...params) as any[];
     return rows
       .map((r) => ({ id: r.record_id, system: r.system, title: r.title, snippet: (r.body||'').slice(0, 250)+"...", url: r.url, tags: r.tags ? JSON.parse(r.tags) : [], score: best[r.record_id] || 0 }))
       .sort((a,b)=>b.score-a.score)
