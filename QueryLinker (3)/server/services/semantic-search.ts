@@ -27,12 +27,17 @@ export class SemanticSearchService {
   }
 
   async ensureIndexed(solutionId: string): Promise<void> {
-    const row = this.getDb().prepare(`SELECT content FROM solutions WHERE id = ?`).get(solutionId) as { content?: string } | undefined;
-    if (!row || !row.content) return;
+    try {
+      const result = await this.executeQuery(`SELECT content FROM solutions WHERE id = $1`, [solutionId]);
+      const row = result.rows[0];
+      if (!row || !row.content) return;
 
-    const chunks = await import("./chunker").then((m) => m.chunkText(row.content!));
-    const embeddings = await embeddingService.embed(chunks.map((c) => c.content));
-    chunks.forEach((c, i) => vectorSearch.indexChunk(solutionId, c.index, c.content, embeddings[i]));
+      const chunks = await import("./chunker").then((m) => m.chunkText(row.content));
+      const embeddings = await embeddingService.embed(chunks.map((c) => c.content));
+      chunks.forEach((c, i) => vectorSearch.indexChunk(solutionId, c.index, c.content, embeddings[i]));
+    } catch (error) {
+      console.warn("[SemanticSearch] Error indexing solution:", error.message);
+    }
   }
 
   async indexAll(): Promise<void> {
