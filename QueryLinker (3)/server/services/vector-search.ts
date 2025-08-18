@@ -22,7 +22,11 @@ export interface VectorMatch {
 }
 
 export class VectorSearchService {
-  private db = getDatabase();
+  private getDb() {
+    const db = getDatabase();
+    if (!db) throw new Error("Database not available");
+    return db;
+  }
 
   indexChunk(solutionId: string, chunkIndex: number, content: string, embedding: number[]): void {
     const stmt = this.db.prepare(
@@ -55,5 +59,3 @@ export class VectorSearchService {
 }
 
 export const vectorSearch = new VectorSearchService();
-
-
