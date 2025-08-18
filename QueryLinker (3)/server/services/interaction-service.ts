@@ -165,7 +165,7 @@ export class InteractionService {
    */
   async getSystemPopularity(days: number = 30): Promise<any[]> {
     try {
-      const popularity = InteractionModel.getSystemPopularity(days);
+      const popularity = await InteractionModel.getSystemPopularity(days);
 
       // Enhance with additional metrics
       const enhancedPopularity = popularity.map((system: any) => ({
