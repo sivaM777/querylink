@@ -1010,55 +1010,64 @@ export const handleAppleOAuth: RequestHandler = async (req, res) => {
         : "Apple User",
     };
 
-    const db = getDatabase();
-
     // Check if user exists
-    let existingUser = db
-      .prepare(
-        "SELECT user_id, email, full_name, role, avatar_url, preferences FROM users WHERE email = ?",
-      )
-      .get(appleUser.email) as User;
+    const userResult = await executeQuery(
+      "SELECT user_id, email, full_name, role, avatar_url, preferences FROM users WHERE email = $1",
+      [appleUser.email]
+    );
+
+    let existingUser = userResult.rows[0] as User;
 
     if (!existingUser) {
       // Create new user
-      const result = db
-        .prepare(
-          `INSERT INTO users (email, password_hash, full_name, role, email_verified)
-           VALUES (?, ?, ?, ?, ?)`,
-        )
-        .run(
+      const insertResult = await executeQuery(
+        `INSERT INTO users (email, password_hash, full_name, role, email_verified, provider, provider_id)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
+         RETURNING user_id`,
+        [
           appleUser.email,
           "", // No password for OAuth users
           appleUser.name,
           "user",
-          1,
-        );
-
-      const userId = result.lastInsertRowid as number;
-
-      existingUser = db
-        .prepare(
-          `SELECT user_id, email, full_name, role, avatar_url, preferences
-           FROM users WHERE user_id = ?`,
-        )
-        .get(userId) as User;
-
-      // Create welcome notification
-      db.prepare(
-        `INSERT INTO notifications (user_id, title, message, type)
-         VALUES (?, ?, ?, ?)`,
-      ).run(
-        userId,
-        "Welcome to QueryLinker!",
-        "Your Apple ID has been linked successfully.",
-        "success",
+          true,
+          "apple",
+          identityToken.substr(-12) // Use last 12 chars as provider_id
+        ]
       );
+
+      const userId = insertResult.rows[0].user_id;
+
+      // Get the created user
+      const newUserResult = await executeQuery(
+        `SELECT user_id, email, full_name, role, avatar_url, preferences
+         FROM users WHERE user_id = $1`,
+        [userId]
+      );
+
+      existingUser = newUserResult.rows[0] as User;
+
+      // Create welcome notification (only if notifications table exists)
+      try {
+        await executeQuery(
+          `INSERT INTO notifications (user_id, title, message, type)
+           VALUES ($1, $2, $3, $4)`,
+          [
+            userId,
+            "Welcome to QueryLinker!",
+            "Your Apple ID has been linked successfully.",
+            "success",
+          ]
+        );
+      } catch (error) {
+        console.log("[Auth] Notifications table not available, skipping welcome notification");
+      }
     }
 
     // Update last login
-    db.prepare(
-      "UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE user_id = ?",
-    ).run(existingUser.user_id);
+    await executeQuery(
+      "UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE user_id = $1",
+      [existingUser.user_id]
+    );
 
     // Generate JWT token
     const token = jwt.sign(
@@ -1069,15 +1078,14 @@ export const handleAppleOAuth: RequestHandler = async (req, res) => {
 
     // Store session
     const sessionExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    db.prepare(
-      `INSERT INTO user_sessions (user_id, token, expires_at, device_info, ip_address)
-       VALUES (?, ?, ?, ?, ?)`,
-    ).run(
-      existingUser.user_id,
-      token,
-      sessionExpiry.toISOString(),
-      req.headers["user-agent"],
-      req.ip,
+    await executeQuery(
+      `INSERT INTO user_sessions (user_id, token, expires_at)
+       VALUES ($1, $2, $3)`,
+      [
+        existingUser.user_id,
+        token,
+        sessionExpiry.toISOString(),
+      ]
     );
 
     res.json({
