@@ -41,15 +41,25 @@ export class IntegrationService {
   }
 
   list() {
-    const rows = this.getDb().prepare(`SELECT system as key, enabled, last_sync, last_sync_status FROM system_sync_config`).all() as any[];
-    const map: Record<string, any> = {};
-    for (const r of rows) map[r.key] = r;
-    return Object.values(INTEGRATIONS).map((info) => ({
-      ...info,
-      enabled: !!(map[info.key]?.enabled),
-      last_sync: map[info.key]?.last_sync,
-      status: map[info.key]?.last_sync_status || (map[info.key]?.enabled ? 'ready' : 'disconnected'),
-    }));
+    try {
+      const rows = this.getDb().prepare(`SELECT system as key, enabled, last_sync, last_sync_status FROM system_sync_config`).all() as any[];
+      const map: Record<string, any> = {};
+      for (const r of rows) map[r.key] = r;
+      return Object.values(INTEGRATIONS).map((info) => ({
+        ...info,
+        enabled: !!(map[info.key]?.enabled),
+        last_sync: map[info.key]?.last_sync,
+        status: map[info.key]?.last_sync_status || (map[info.key]?.enabled ? 'ready' : 'disconnected'),
+      }));
+    } catch (error) {
+      console.warn("[IntegrationService] Database not available, returning default integrations:", error.message);
+      return Object.values(INTEGRATIONS).map((info) => ({
+        ...info,
+        enabled: false,
+        last_sync: null,
+        status: 'disconnected',
+      }));
+    }
   }
 
   connect(key: IntegrationKey) {
