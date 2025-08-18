@@ -22,7 +22,8 @@
     "typecheck": "tsc",
     "db:migrate": "node server/database/sqlite-export.js",
     "db:complete-migrate": "node server/database/complete-migration.js",
-    "db:sqlite3-migrate": "node server/database/sqlite3-migration.js"
+    "db:sqlite3-migrate": "node server/database/sqlite3-migration.js",
+    "db:manual-migrate": "node server/database/manual-migration.js"
   },
   "dependencies": {
     "@sendgrid/mail": "^8.1.5",
