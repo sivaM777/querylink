@@ -29,7 +29,7 @@ export class VectorSearchService {
   }
 
   indexChunk(solutionId: string, chunkIndex: number, content: string, embedding: number[]): void {
-    const stmt = this.db.prepare(
+    const stmt = this.getDb().prepare(
       `INSERT OR REPLACE INTO solution_chunks (id, solution_id, chunk_index, content, embedding)
        VALUES (?, ?, ?, ?, ?)`
     );
@@ -38,7 +38,7 @@ export class VectorSearchService {
   }
 
   search(queryEmbedding: number[], limit: number = 20): VectorMatch[] {
-    const rows = this.db.prepare(
+    const rows = this.getDb().prepare(
       `SELECT id as chunk_id, solution_id, content, embedding FROM solution_chunks`
     ).all() as { chunk_id: string; solution_id: string; content: string; embedding: string }[];
 
