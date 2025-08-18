@@ -271,16 +271,21 @@ class SolutionSyncService {
    * Get system configurations
    */
   private getSystemConfigs(): SystemConfig[] {
-    const stmt = this.getDb().prepare(`
-      SELECT system, enabled, api_endpoint, auth_config, sync_interval
-      FROM system_sync_config
-      WHERE enabled = 1
-    `);
+    try {
+      const stmt = this.getDb().prepare(`
+        SELECT system, enabled, api_endpoint, auth_config, sync_interval
+        FROM system_sync_config
+        WHERE enabled = 1
+      `);
 
-    return stmt.all().map(row => ({
-      ...row,
-      auth_config: row.auth_config ? JSON.parse(row.auth_config) : {}
-    }));
+      return stmt.all().map(row => ({
+        ...row,
+        auth_config: row.auth_config ? JSON.parse(row.auth_config) : {}
+      }));
+    } catch (error) {
+      console.warn("[SolutionSync] Database not available, returning empty configs:", error.message);
+      return [];
+    }
   }
 
   /**
