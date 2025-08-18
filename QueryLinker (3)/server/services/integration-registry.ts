@@ -41,7 +41,7 @@ export class IntegrationService {
   }
 
   list() {
-    const rows = this.db.prepare(`SELECT system as key, enabled, last_sync, last_sync_status FROM system_sync_config`).all() as any[];
+    const rows = this.getDb().prepare(`SELECT system as key, enabled, last_sync, last_sync_status FROM system_sync_config`).all() as any[];
     const map: Record<string, any> = {};
     for (const r of rows) map[r.key] = r;
     return Object.values(INTEGRATIONS).map((info) => ({
@@ -53,8 +53,8 @@ export class IntegrationService {
   }
 
   connect(key: IntegrationKey) {
-    this.db.prepare(`INSERT OR IGNORE INTO system_sync_config(system, enabled) VALUES(?, 0)`).run(key);
-    this.db.prepare(`UPDATE system_sync_config SET enabled=1, updated_at=CURRENT_TIMESTAMP WHERE system=?`).run(key);
+    this.getDb().prepare(`INSERT OR IGNORE INTO system_sync_config(system, enabled) VALUES(?, 0)`).run(key);
+    this.getDb().prepare(`UPDATE system_sync_config SET enabled=1, updated_at=CURRENT_TIMESTAMP WHERE system=?`).run(key);
     // kick off a sync in background
     setImmediate(async () => {
       if (key === "SLACK") {
@@ -68,7 +68,7 @@ export class IntegrationService {
   }
 
   disconnect(key: IntegrationKey) {
-    this.db.prepare(`UPDATE system_sync_config SET enabled=0, updated_at=CURRENT_TIMESTAMP WHERE system=?`).run(key);
+    this.getDb().prepare(`UPDATE system_sync_config SET enabled=0, updated_at=CURRENT_TIMESTAMP WHERE system=?`).run(key);
   }
 }
 
