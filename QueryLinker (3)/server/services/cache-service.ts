@@ -85,13 +85,18 @@ export class CacheService {
         );
 
         // Parse and return cached suggestions
-        const suggestions = JSON.parse(cached.suggestions_json);
-        return {
-          suggestions,
-          total_found: cached.total_found || suggestions.length,
-          search_keywords: keywords.map((k) => k.word),
-          search_time_ms: 0, // Cache hit, so instant
-        };
+        try {
+          const suggestions = JSON.parse(cached.suggestions_json || '[]');
+          return {
+            suggestions,
+            total_found: cached.total_found || suggestions.length,
+            search_keywords: keywords.map((k) => k.word),
+            search_time_ms: 0, // Cache hit, so instant
+          };
+        } catch (parseError) {
+          console.error("[CacheService] Error parsing cached JSON:", parseError);
+          // Cache entry is corrupted, continue without cache
+        }
       }
 
       console.log(
