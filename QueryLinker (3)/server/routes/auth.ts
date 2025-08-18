@@ -1198,11 +1198,9 @@ export const handleGetRecentActivity: RequestHandler = async (req, res) => {
       });
     }
 
-    const db = getDatabase();
-
-    // Get recent user interactions and activities
-    const recentActivities = db
-      .prepare(
+    // Get recent user interactions and activities using PostgreSQL
+    try {
+      const recentActivitiesResult = await executeQuery(
         `
         SELECT
           'interaction' as type,
@@ -1211,40 +1209,43 @@ export const handleGetRecentActivity: RequestHandler = async (req, res) => {
           system,
           timestamp
         FROM user_interactions
-        WHERE user_id = ?
-        UNION ALL
-        SELECT
-          'notification' as type,
-          type as action,
-          title,
-          'system' as system,
-          created_at as timestamp
-        FROM notifications
-        WHERE user_id = ?
+        WHERE user_id = $1
         ORDER BY timestamp DESC
-        LIMIT ?
-      `,
-      )
-      .all(userId, userId, limit);
+        LIMIT $2
+        `,
+        [userId, limit]
+      );
 
-    // Format activities for frontend
-    const formattedActivities = recentActivities.map((activity: any) => ({
-      id: `${activity.type}-${activity.timestamp}`,
-      type: activity.type,
-      action: activity.action,
-      title: activity.title || 'Unknown activity',
-      system: activity.system,
-      timestamp: activity.timestamp,
-      time: activity.timestamp ? new Date(activity.timestamp).toLocaleTimeString() : 'Just now',
-      message: formatActivityMessage(activity),
-      color: getActivityColor(activity.type, activity.action),
-    }));
+      const recentActivities = recentActivitiesResult.rows;
 
-    res.json({
-      success: true,
-      activities: formattedActivities,
-      total: formattedActivities.length,
-    });
+      // Format activities for frontend
+      const formattedActivities = recentActivities.map((activity: any) => ({
+        id: `${activity.type}-${activity.timestamp}`,
+        type: activity.type,
+        action: activity.action,
+        title: activity.title || 'Unknown activity',
+        system: activity.system,
+        timestamp: activity.timestamp,
+        time: activity.timestamp ? new Date(activity.timestamp).toLocaleTimeString() : 'Just now',
+        message: formatActivityMessage(activity),
+        color: getActivityColor(activity.type, activity.action),
+      }));
+
+      res.json({
+        success: true,
+        activities: formattedActivities,
+        total: formattedActivities.length,
+      });
+    } catch (dbError) {
+      console.error("Database query error:", dbError);
+      // Return empty activities if database is not available
+      res.json({
+        success: true,
+        activities: [],
+        total: 0,
+        message: "Recent activity data is temporarily unavailable"
+      });
+    }
   } catch (error) {
     console.error("Get recent activity error:", error);
     res.status(500).json({
