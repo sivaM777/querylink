@@ -1,14 +1,15 @@
-import Database from "better-sqlite3";
-import { readFileSync, existsSync } from "fs";
-import { join, dirname } from "path";
-import { fileURLToPath } from "url";
+// Re-export PostgreSQL database functionality
+export {
+  initializeDatabase,
+  getDatabase,
+  executeQuery,
+  PreparedStatement,
+  DatabaseWrapper,
+  db
+} from './postgres-database';
+
 import crypto from "crypto";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-// Database connection
-let db: Database.Database;
+import { getDatabase, executeQuery, PreparedStatement } from './postgres-database';
 
 export function initializeDatabase(): Database.Database {
   try {
