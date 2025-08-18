@@ -487,37 +487,31 @@ export default function Index() {
       }
 
       // Add team member activities
-      if (teamResponse.ok) {
-        const teamData = await teamResponse.json();
-        if (teamData.members) {
-          teamData.members.forEach((member: any, index: number) => {
-            if (member.status === "online" && member.working) {
-              const memberTime = new Date(member.lastSeen);
-              activities.push({
-                type: "team",
-                message: `${member.name} is working on ${member.working}`,
-                time: getTimeAgo(memberTime),
-                color: "bg-blue-500",
-              });
-            }
-          });
-        }
+      if (teamData && !teamData.error && teamData.members) {
+        teamData.members.forEach((member: any, index: number) => {
+          if (member.status === "online" && member.working) {
+            const memberTime = new Date(member.lastSeen);
+            activities.push({
+              type: "team",
+              message: `${member.name} is working on ${member.working}`,
+              time: getTimeAgo(memberTime),
+              color: "bg-blue-500",
+            });
+          }
+        });
       }
 
       // Add chat activities
-      if (chatResponse.ok) {
-        const chatData = await chatResponse.json();
-        if (chatData.messages) {
-          chatData.messages.slice(0, 2).forEach((msg: any) => {
-            const chatTime = new Date(msg.timestamp);
-            activities.push({
-              type: "chat",
-              message: `${msg.user}: ${msg.message.substring(0, 50)}...`,
-              time: getTimeAgo(chatTime),
-              color: "bg-purple-500",
-            });
+      if (chatData && !chatData.error && chatData.messages) {
+        chatData.messages.slice(0, 2).forEach((msg: any) => {
+          const chatTime = new Date(msg.timestamp);
+          activities.push({
+            type: "chat",
+            message: `${msg.user}: ${msg.message.substring(0, 50)}...`,
+            time: getTimeAgo(chatTime),
+            color: "bg-purple-500",
           });
-        }
+        });
       }
 
       // Add user activities from new API
