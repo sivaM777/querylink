@@ -42,24 +42,24 @@ export class VectorSearchService {
       const rows = this.getDb().prepare(
         `SELECT id as chunk_id, solution_id, content, embedding FROM solution_chunks`
       ).all() as { chunk_id: string; solution_id: string; content: string; embedding: string }[];
+
+      const matches: VectorMatch[] = [];
+      for (const r of rows) {
+        if (!r.embedding) continue;
+        let emb: number[];
+        try {
+          emb = JSON.parse(r.embedding);
+        } catch {
+          continue;
+        }
+        const score = cosineSimilarity(queryEmbedding, emb);
+        matches.push({ solution_id: r.solution_id, chunk_id: r.chunk_id, score, content: r.content });
+      }
+      return matches.sort((a, b) => b.score - a.score).slice(0, limit);
     } catch (error) {
       console.error("[VectorSearchService] Database error in search:", error);
       return []; // Return empty results if database is not available
     }
-
-    const matches: VectorMatch[] = [];
-    for (const r of rows) {
-      if (!r.embedding) continue;
-      let emb: number[];
-      try {
-        emb = JSON.parse(r.embedding);
-      } catch {
-        continue;
-      }
-      const score = cosineSimilarity(queryEmbedding, emb);
-      matches.push({ solution_id: r.solution_id, chunk_id: r.chunk_id, score, content: r.content });
-    }
-    return matches.sort((a, b) => b.score - a.score).slice(0, limit);
   }
 }
 
