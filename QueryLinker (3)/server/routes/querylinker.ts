@@ -26,19 +26,19 @@ import { integrationService } from "../services/integration-registry";
  */
 async function getActiveUsersCount(): Promise<number> {
   try {
-    const db = getDatabase();
-
     // Count sessions that are active within the last 10 minutes
-    // Use SQLite's datetime function for proper date comparison
-    const result = db.prepare(`
+    // Use PostgreSQL's INTERVAL for proper date comparison
+    const { executeQuery } = await import("../database/database");
+    const result = await executeQuery(`
       SELECT COUNT(DISTINCT user_id) as active_count
       FROM user_sessions
       WHERE expires_at > CURRENT_TIMESTAMP
-      AND last_activity > datetime('now', '-10 minutes')
-    `).get() as { active_count: number };
+      AND created_at > CURRENT_TIMESTAMP - INTERVAL '10 minutes'
+    `);
 
-    console.log(`[QueryLinker] Active users count: ${result.active_count}`);
-    return result.active_count || 0;
+    const activeCount = parseInt(result.rows[0]?.active_count) || 0;
+    console.log(`[QueryLinker] Active users count: ${activeCount}`);
+    return activeCount;
   } catch (error) {
     console.error('[QueryLinker] Error getting active users count:', error);
     return 0;
