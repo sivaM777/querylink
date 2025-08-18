@@ -246,8 +246,12 @@ export const handleLogout: RequestHandler = async (req, res) => {
     const token = req.headers.authorization?.replace("Bearer ", "");
 
     if (token) {
-      const db = getDatabase();
-      db.prepare("DELETE FROM user_sessions WHERE token = ?").run(token);
+      try {
+        await executeQuery("DELETE FROM user_sessions WHERE session_id = $1", [token]);
+      } catch (dbError) {
+        console.error("Database error during logout:", dbError);
+        // Continue with logout even if database cleanup fails
+      }
     }
 
     res.json({
