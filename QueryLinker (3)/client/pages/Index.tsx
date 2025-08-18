@@ -185,7 +185,7 @@ const getSystemFeaturesForAlert = (systemName: string): string[] => {
       "✅ Page content indexing",
       "✅ Space-based organization",
       "✅ Version history tracking",
-      "✅ Macro content extraction",
+      "�� Macro content extraction",
       "✅ Comment integration",
       "✅ Permission-aware search",
     ],
@@ -462,12 +462,6 @@ export default function Index() {
       }
 
       const [analyticsData, teamData, chatData] = await Promise.all(apiRequests);
-      const [
-        analyticsResponse,
-        teamResponse,
-        chatResponse,
-        userActivityResponse,
-      ] = responses;
 
       const activities = [];
       const now = new Date();
