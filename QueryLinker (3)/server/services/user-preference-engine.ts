@@ -352,7 +352,7 @@ export class UserPreferenceEngine {
    */
   private async createUserProfile(userId: string): Promise<UserProfile> {
     // Get historical interaction data for this user
-    const interactions = InteractionModel.getInteractionsByUser(userId, 100);
+    const interactions = await InteractionModel.getInteractionsByUser(userId, 100);
 
     const profile: UserProfile = {
       userId,
