@@ -50,13 +50,13 @@ async function getActiveUsersCount(): Promise<number> {
  */
 async function updateUserActivity(token: string): Promise<void> {
   try {
-    const db = getDatabase();
+    const { executeQuery } = await import("../database/database");
 
-    db.prepare(`
+    await executeQuery(`
       UPDATE user_sessions
-      SET last_activity = CURRENT_TIMESTAMP
-      WHERE token = ? AND expires_at > CURRENT_TIMESTAMP
-    `).run(token);
+      SET created_at = CURRENT_TIMESTAMP
+      WHERE session_id = $1 AND expires_at > CURRENT_TIMESTAMP
+    `, [token]);
   } catch (error) {
     console.error('[QueryLinker] Error updating user activity:', error);
   }
