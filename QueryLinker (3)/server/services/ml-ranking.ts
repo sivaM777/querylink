@@ -390,7 +390,7 @@ export class MLRankingEngine {
   ): Promise<number> {
     try {
       // In a real implementation, this would query historical data for this specific suggestion
-      const effective = InteractionModel.getMostEffectiveSuggestions(100);
+      const effective = await InteractionModel.getMostEffectiveSuggestions(100);
       const suggestionData = effective.find(
         (s: any) => s.suggestion_id === suggestionId,
       );
