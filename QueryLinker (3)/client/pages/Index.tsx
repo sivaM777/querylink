@@ -515,20 +515,17 @@ export default function Index() {
       }
 
       // Add user activities from new API
-      if (userActivityResponse && userActivityResponse.ok) {
-        const userActivityData = await userActivityResponse.json();
-        if (userActivityData.success && userActivityData.activities) {
-          userActivityData.activities.slice(0, 3).forEach((activity: any) => {
-            // Store the actual timestamp for sorting, format for display
-            const timestamp = new Date(activity.timestamp);
-            activities.push({
-              type: activity.type,
-              message: activity.message,
-              time: getTimeAgo(timestamp),
-              color: activity.color || "bg-indigo-500",
-            });
+      if (userActivityData && !userActivityData.error && userActivityData.success && userActivityData.activities) {
+        userActivityData.activities.slice(0, 3).forEach((activity: any) => {
+          // Store the actual timestamp for sorting, format for display
+          const timestamp = new Date(activity.timestamp);
+          activities.push({
+            type: activity.type,
+            message: activity.message,
+            time: getTimeAgo(timestamp),
+            color: activity.color || "bg-indigo-500",
           });
-        }
+        });
       }
 
       // Add current search context
