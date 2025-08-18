@@ -16,10 +16,14 @@ interface Suggestion {
 }
 
 export class SemanticSearchService {
-  private getDb() {
-    const db = getDatabase();
-    if (!db) throw new Error("Database not available");
-    return db;
+  private async executeQuery(query: string, params?: any[]): Promise<any> {
+    try {
+      const { executeQuery } = await import("../database/database");
+      return await executeQuery(query, params);
+    } catch (error) {
+      console.warn("[SemanticSearch] Database not available:", error.message);
+      throw new Error("Database not available");
+    }
   }
 
   async ensureIndexed(solutionId: string): Promise<void> {
