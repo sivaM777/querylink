@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch server/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js",
+    "start": "node dist/start.js",
     "test": "vitest --run",
     "db:migrate": "node server/database/sqlite-export.js",
     "db:complete-migrate": "node server/database/complete-migration.js"
