@@ -616,23 +616,21 @@ openssl s_client -connect portal.company.com:443 -servername portal.company.com
   /**
    * Get solution by ID
    */
-  getSolutionById(solutionId: string): any {
+  async getSolutionById(solutionId: string): Promise<any> {
     try {
-      const stmt = this.getDb().prepare(`
-        SELECT * FROM solutions WHERE id = ?
-      `);
+      const { executeQuery } = await import("../database/database");
 
-      const solution = stmt.get(solutionId);
+      const result = await executeQuery(`
+        SELECT * FROM solutions WHERE id = $1
+      `, [solutionId]);
+
+      const solution = result.rows[0];
       if (solution) {
-        // Parse JSON fields
-        solution.tags = JSON.parse(solution.tags || '[]');
-        solution.steps = JSON.parse(solution.steps || '[]');
-        solution.related_issues = JSON.parse(solution.related_issues || '[]');
-        solution.attachments = JSON.parse(solution.attachments || '[]');
-        solution.metadata = JSON.parse(solution.metadata || '{}');
+        // JSON fields are already parsed in PostgreSQL
+        return solution;
       }
 
-      return solution;
+      return null;
     } catch (error) {
       console.error("[SolutionSyncService] Database error in getSolutionById:", error);
       return null; // Return null if database is not available
