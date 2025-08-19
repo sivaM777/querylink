@@ -67,13 +67,9 @@ export default function Signup() {
     setIsLoading(true);
     setError(""); // Clear any previous errors
 
-    let response;
-    let responseText = "";
-    let result = null;
-
     try {
       // Make the API call
-      response = await fetch("/api/auth/signup", {
+      const response = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -82,85 +78,72 @@ export default function Signup() {
           password: signupData.password,
         }),
       });
-    } catch (fetchError) {
-      console.error("Fetch error:", fetchError);
-      setError("Network error. Please check your connection and try again.");
-      setIsLoading(false);
-      return;
-    }
 
-    if (!response.body) {
-      setError("No response from server. Please try again.");
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      // Read response text
-      responseText = await response.text();
+      // Read response text only once
+      const responseText = await response.text();
       console.log("Raw response:", responseText);
-    } catch (textError) {
-      console.error("Failed to read response:", textError);
-      setError("Failed to read server response. Please try again.");
-      setIsLoading(false);
-      return;
-    }
 
-    try {
       // Parse JSON
-      result = JSON.parse(responseText);
-    } catch (jsonError) {
-      console.error("JSON parsing failed:", jsonError);
-      console.error("Raw response text:", responseText);
-      setError("Server returned invalid response. Please try again.");
-      setIsLoading(false);
-      return;
-    }
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (jsonError) {
+        console.error("JSON parsing failed:", jsonError);
+        console.error("Raw response text:", responseText);
+        setError("Server returned invalid response. Please try again.");
+        setIsLoading(false);
+        return;
+      }
 
-    console.log("Signup response details:", {
-      status: response.status,
-      ok: response.ok,
-      result: result,
-      message: result?.message,
-    });
+      console.log("Signup response details:", {
+        status: response.status,
+        ok: response.ok,
+        result: result,
+        message: result?.message,
+      });
 
-    // Handle successful response
-    if (response.ok && result?.success) {
-      setError("");
-      alert(
-        "Account created successfully! Please sign in with your credentials.",
-      );
-      navigate("/login");
-      setIsLoading(false);
-      return;
-    }
-
-    // Handle 400 errors (like user already exists)
-    if (response.status === 400) {
-      if (result?.message?.includes("already exists")) {
-        setError(
-          "User already exists. Please enter new details or sign in instead.",
+      // Handle successful response
+      if (response.ok && result?.success) {
+        setError("");
+        alert(
+          "Account created successfully! Please sign in with your credentials.",
         );
-      } else if (result?.message?.includes("required")) {
-        setError("All fields are required. Please fill in all information.");
-      } else if (result?.message?.includes("6 characters")) {
-        setError("Password must be at least 6 characters long.");
-      } else if (result?.message) {
-        setError(result.message);
+        navigate("/login");
+        setIsLoading(false);
+        return;
+      }
+
+      // Handle 400 errors (like user already exists)
+      if (response.status === 400) {
+        if (result?.message?.includes("already exists")) {
+          setError(
+            "User already exists. Please enter new details or sign in instead.",
+          );
+        } else if (result?.message?.includes("required")) {
+          setError("All fields are required. Please fill in all information.");
+        } else if (result?.message?.includes("6 characters")) {
+          setError("Password must be at least 6 characters long.");
+        } else if (result?.message) {
+          setError(result.message);
+        } else {
+          setError(
+            "Registration failed. Please check your information and try again.",
+          );
+        }
       } else {
+        // Handle other error responses
         setError(
-          "Registration failed. Please check your information and try again.",
+          result?.message ||
+            `Registration failed (${response.status}). Please try again.`,
         );
       }
-    } else {
-      // Handle other error responses
-      setError(
-        result?.message ||
-          `Registration failed (${response.status}). Please try again.`,
-      );
-    }
 
-    setIsLoading(false);
+      setIsLoading(false);
+    } catch (fetchError) {
+      console.error("Network error:", fetchError);
+      setError("Network error. Please check your connection and try again.");
+      setIsLoading(false);
+    }
   };
 
   const handleGoogleSignup = () => {
