@@ -38,6 +38,8 @@ import {
   handleSyncStatus,
   handleTriggerSync,
 } from "./routes/querylinker";
+
+import { handleSLADataFixed } from "./routes/sla-fixed";
 import {
   handleSignup,
   handleLogin,
