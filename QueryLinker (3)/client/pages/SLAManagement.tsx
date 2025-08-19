@@ -672,9 +672,9 @@ export default function SLAManagement() {
               <CardContent>
                 {slaData.escalations.length > 0 ? (
                   <div className="space-y-4">
-                    {slaData.escalations.map((escalation: any) => (
+                    {slaData.escalations.map((escalation: any, index: number) => (
                       <div
-                        key={escalation.id}
+                        key={escalation.id || `escalation-${index}`}
                         className="border rounded-lg p-4"
                       >
                         <div className="flex items-center justify-between mb-2">
