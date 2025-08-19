@@ -1,0 +1,2 @@
+# This directory holds the SQLite database file
+# Add this directory to git but ignore the actual database files
