@@ -556,8 +556,8 @@ export default function SLAManagement() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  {slaData.slaTargets.map((sla: any) => (
-                    <div key={sla.id} className="border rounded-lg p-4">
+                  {slaData.slaTargets.map((sla: any, index: number) => (
+                    <div key={sla.id || `sla-${index}`} className="border rounded-lg p-4">
                       <div className="flex items-center justify-between mb-2">
                         <h3 className="font-semibold">{sla.name}</h3>
                         <div className="flex items-center gap-2">
