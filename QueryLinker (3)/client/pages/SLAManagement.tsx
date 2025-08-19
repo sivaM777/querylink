@@ -320,7 +320,7 @@ export default function SLAManagement() {
         doc.text('SLA Targets Performance', 20, yPosition);
         yPosition += 10;
 
-        const slaTargetsData = slaData.slaTargets.map((sla: any) => [
+        const slaTargetsData = slaData.slaTargets.map((sla: any, index: number) => [
           sla.name,
           sla.target,
           sla.current,
