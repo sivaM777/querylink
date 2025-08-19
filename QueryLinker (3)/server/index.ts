@@ -208,7 +208,7 @@ export function createServer() {
   app.post("/api/querylinker/activity", handleActivityLog);
 
   // SLA Management routes
-  app.get("/api/querylinker/sla-data", handleSLAData);
+  app.get("/api/querylinker/sla-data", handleSLADataFixed);
   app.post("/api/querylinker/sla-create", handleCreateSLA);
   app.post("/api/querylinker/sla-escalate", handleEscalateIncident);
   app.get("/api/querylinker/sla-report", handleSLAReport);
