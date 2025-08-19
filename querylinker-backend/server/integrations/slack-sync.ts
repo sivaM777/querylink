@@ -1,4 +1,4 @@
-import { expressSqliteRag } from "../services/express-sqlite-rag";
+import { getDatabase } from "../database/database";
 
 interface SlackMessage {
   channel: string;

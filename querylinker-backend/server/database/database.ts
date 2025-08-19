@@ -1,21 +1,87 @@
-// Re-export PostgreSQL database functionality
-export {
-  initializeDatabase,
-  getDatabase,
-  executeQuery,
-  PreparedStatement,
-  DatabaseWrapper,
-  db
-} from './postgres-database';
 
+import Database from "better-sqlite3";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
 import crypto from "crypto";
-import { getDatabase, executeQuery, PreparedStatement } from './postgres-database';
 
-// PostgreSQL initialization is handled in postgres-database.ts
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
-// Migration functions removed - PostgreSQL schema is handled in postgres-database.ts
+// SQLite database path
+const dbPath = join(__dirname, "../../data/querylinker.db");
 
-// getDatabase is re-exported from postgres-database.ts
+// SQLite database instance
+let db: Database.Database;
+
+export function initializeDatabase(): Database.Database {
+  if (!db) {
+    db = new Database(dbPath);
+    console.log("✅ Connected to SQLite database:", dbPath);
+  }
+  return db;
+}
+
+export function getDatabase(): Database.Database {
+  if (!db) {
+    db = initializeDatabase();
+  }
+  return db;
+}
+
+export function executeQuery(query: string, params: any[] = []): any {
+  const database = getDatabase();
+  try {
+    if (query.trim().toLowerCase().startsWith('select')) {
+      return { rows: database.prepare(query).all(...params) };
+    } else {
+      const result = database.prepare(query).run(...params);
+      return { 
+        rows: [], 
+        rowCount: result.changes,
+        insertId: result.lastInsertRowid 
+      };
+    }
+  } catch (error) {
+    console.error("Database query error:", error);
+    throw error;
+  }
+}
+
+export class PreparedStatement {
+  private stmt: Database.Statement;
+
+  constructor(query: string) {
+    this.stmt = getDatabase().prepare(query);
+  }
+
+  run(...params: any[]) {
+    return this.stmt.run(...params);
+  }
+
+  get(...params: any[]) {
+    return this.stmt.get(...params);
+  }
+
+  all(...params: any[]) {
+    return this.stmt.all(...params);
+  }
+}
+
+export class DatabaseWrapper {
+  prepare(query: string): PreparedStatement {
+    return new PreparedStatement(query);
+  }
+
+  exec(query: string): void {
+    getDatabase().exec(query);
+  }
+}
+
+// Initialize database on module load
+db = initializeDatabase();
+
+// Export the database instance
+export { db };
 
 // Database Models and Operations
 
@@ -61,20 +127,13 @@ export class CacheModel {
     data: Omit<CachedSuggestion, "id" | "timestamp">,
   ): Promise<number> {
     try {
-      const result = await executeQuery(`
-        INSERT INTO cached_suggestions
+      const stmt = getDatabase().prepare(`
+        INSERT OR REPLACE INTO cached_suggestions
         (incident_number, keywords, keywords_hash, suggestions_json, search_time_ms, total_found, expires_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-        ON CONFLICT (keywords_hash) DO UPDATE SET
-          incident_number = EXCLUDED.incident_number,
-          keywords = EXCLUDED.keywords,
-          suggestions_json = EXCLUDED.suggestions_json,
-          search_time_ms = EXCLUDED.search_time_ms,
-          total_found = EXCLUDED.total_found,
-          expires_at = EXCLUDED.expires_at,
-          timestamp = CURRENT_TIMESTAMP
-        RETURNING id
-      `, [
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      const result = stmt.run(
         data.incident_number,
         data.keywords,
         data.keywords_hash,
@@ -82,9 +141,9 @@ export class CacheModel {
         data.search_time_ms,
         data.total_found,
         data.expires_at,
-      ]);
+      );
 
-      return result.rows[0]?.id || 0;
+      return result.lastInsertRowid as number;
     } catch (error) {
       console.error("[CacheModel] Error caching suggestions:", error);
       throw error;
@@ -96,14 +155,14 @@ export class CacheModel {
    */
   static async getCachedSuggestions(keywordsHash: string): Promise<CachedSuggestion | null> {
     try {
-      const result = await executeQuery(`
+      const stmt = getDatabase().prepare(`
         SELECT * FROM cached_suggestions
-        WHERE keywords_hash = $1 AND expires_at > CURRENT_TIMESTAMP
+        WHERE keywords_hash = ? AND expires_at > datetime('now')
         ORDER BY timestamp DESC
         LIMIT 1
-      `, [keywordsHash]);
+      `);
 
-      return result.rows[0] || null;
+      return stmt.get(keywordsHash) || null;
     } catch (error) {
       console.error("[CacheModel] Error getting cached suggestions:", error);
       return null;
@@ -117,14 +176,14 @@ export class CacheModel {
     incidentNumber: string,
   ): Promise<CachedSuggestion | null> {
     try {
-      const result = await executeQuery(`
+      const stmt = getDatabase().prepare(`
         SELECT * FROM cached_suggestions
-        WHERE incident_number = $1 AND expires_at > CURRENT_TIMESTAMP
+        WHERE incident_number = ? AND expires_at > datetime('now')
         ORDER BY timestamp DESC
         LIMIT 1
-      `, [incidentNumber]);
+      `);
 
-      return result.rows[0] || null;
+      return stmt.get(incidentNumber) || null;
     } catch (error) {
       console.error("[CacheModel] Error getting cached suggestions by incident:", error);
       return null;
@@ -136,12 +195,13 @@ export class CacheModel {
    */
   static async cleanupExpiredCache(): Promise<number> {
     try {
-      const result = await executeQuery(`
+      const stmt = getDatabase().prepare(`
         DELETE FROM cached_suggestions
-        WHERE expires_at < CURRENT_TIMESTAMP
+        WHERE expires_at < datetime('now')
       `);
 
-      return result.rowCount || 0;
+      const result = stmt.run();
+      return result.changes;
     } catch (error) {
       console.error("[CacheModel] Error cleaning up expired cache:", error);
       return 0;
@@ -153,17 +213,21 @@ export class CacheModel {
    */
   static async getCacheStats() {
     try {
-      const totalResult = await executeQuery("SELECT COUNT(*) as count FROM cached_suggestions");
-      const validResult = await executeQuery(
-        "SELECT COUNT(*) as count FROM cached_suggestions WHERE expires_at > CURRENT_TIMESTAMP"
+      const totalStmt = getDatabase().prepare("SELECT COUNT(*) as count FROM cached_suggestions");
+      const validStmt = getDatabase().prepare(
+        "SELECT COUNT(*) as count FROM cached_suggestions WHERE expires_at > datetime('now')"
       );
-      const avgResult = await executeQuery(
+      const avgStmt = getDatabase().prepare(
         "SELECT AVG(search_time_ms) as avg_time FROM cached_suggestions WHERE search_time_ms IS NOT NULL"
       );
 
-      const totalCached = totalResult.rows[0]?.count || 0;
-      const validCached = validResult.rows[0]?.count || 0;
-      const avgSearchTime = avgResult.rows[0]?.avg_time || 0;
+      const totalResult = totalStmt.get() as any;
+      const validResult = validStmt.get() as any;
+      const avgResult = avgStmt.get() as any;
+
+      const totalCached = totalResult?.count || 0;
+      const validCached = validResult?.count || 0;
+      const avgSearchTime = avgResult?.avg_time || 0;
 
       return {
         total_cached: parseInt(totalCached),
@@ -191,12 +255,13 @@ export class InteractionModel {
     data: Omit<UserInteraction, "interaction_id" | "timestamp">,
   ): Promise<number> {
     try {
-      const result = await executeQuery(`
+      const stmt = getDatabase().prepare(`
         INSERT INTO user_interactions
         (user_id, incident_number, suggestion_id, system, suggestion_title, suggestion_link, action_type)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-        RETURNING interaction_id
-      `, [
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      const result = stmt.run(
         data.user_id,
         data.incident_number,
         data.suggestion_id,
@@ -204,9 +269,9 @@ export class InteractionModel {
         data.suggestion_title,
         data.suggestion_link,
         data.action_type || "link",
-      ]);
+      );
 
-      return result.rows[0]?.interaction_id || 0;
+      return result.lastInsertRowid as number;
     } catch (error) {
       console.error("[InteractionModel] Error recording interaction:", error);
       throw error;
@@ -218,13 +283,13 @@ export class InteractionModel {
    */
   static async getInteractionsByIncident(incidentNumber: string): Promise<UserInteraction[]> {
     try {
-      const result = await executeQuery(`
+      const stmt = getDatabase().prepare(`
         SELECT * FROM user_interactions
-        WHERE incident_number = $1
+        WHERE incident_number = ?
         ORDER BY timestamp DESC
-      `, [incidentNumber]);
+      `);
 
-      return result.rows;
+      return stmt.all(incidentNumber);
     } catch (error) {
       console.error("[InteractionModel] Error getting interactions by incident:", error);
       return [];
@@ -239,14 +304,14 @@ export class InteractionModel {
     limit: number = 50,
   ): Promise<UserInteraction[]> {
     try {
-      const result = await executeQuery(`
+      const stmt = getDatabase().prepare(`
         SELECT * FROM user_interactions
-        WHERE user_id = $1
+        WHERE user_id = ?
         ORDER BY timestamp DESC
-        LIMIT $2
-      `, [userId, limit]);
+        LIMIT ?
+      `);
 
-      return result.rows;
+      return stmt.all(userId, limit);
     } catch (error) {
       console.error("[InteractionModel] Error getting interactions by user:", error);
       return [];
@@ -258,7 +323,7 @@ export class InteractionModel {
    */
   static async getAnalytics(days: number = 30) {
     try {
-      const result = await executeQuery(`
+      const stmt = getDatabase().prepare(`
         SELECT
           system,
           COUNT(*) as total_interactions,
@@ -266,13 +331,13 @@ export class InteractionModel {
           COUNT(DISTINCT user_id) as unique_users,
           DATE(timestamp) as interaction_date
         FROM user_interactions
-        WHERE timestamp >= CURRENT_TIMESTAMP - INTERVAL '${days} days'
+        WHERE timestamp >= datetime('now', '-${days} days')
         AND action_type = 'link'
         GROUP BY system, DATE(timestamp)
         ORDER BY interaction_date DESC, total_interactions DESC
       `);
 
-      return result.rows;
+      return stmt.all();
     } catch (error) {
       console.error("[InteractionModel] Error getting analytics:", error);
       return [];
@@ -284,7 +349,7 @@ export class InteractionModel {
    */
   static async getSystemPopularity(days: number = 30) {
     try {
-      const result = await executeQuery(`
+      const stmt = getDatabase().prepare(`
         SELECT
           system,
           COUNT(*) as link_count,
@@ -292,12 +357,12 @@ export class InteractionModel {
           COUNT(DISTINCT user_id) as user_count,
           ROUND(AVG(CASE WHEN action_type = 'link' THEN 1.0 ELSE 0.0 END) * 100, 2) as link_rate
         FROM user_interactions
-        WHERE timestamp >= CURRENT_TIMESTAMP - INTERVAL '${days} days'
+        WHERE timestamp >= datetime('now', '-${days} days')
         GROUP BY system
         ORDER BY link_count DESC
       `);
 
-      return result.rows;
+      return stmt.all();
     } catch (error) {
       console.error("[InteractionModel] Error getting system popularity:", error);
       return [];
@@ -309,7 +374,7 @@ export class InteractionModel {
    */
   static async getMostEffectiveSuggestions(limit: number = 10) {
     try {
-      const result = await executeQuery(`
+      const stmt = getDatabase().prepare(`
         SELECT
           suggestion_id,
           system,
@@ -319,18 +384,16 @@ export class InteractionModel {
           COUNT(DISTINCT user_id) as user_count
         FROM user_interactions
         WHERE action_type = 'link'
-        AND timestamp >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+        AND timestamp >= datetime('now', '-30 days')
         GROUP BY suggestion_id, system, suggestion_title
         ORDER BY link_count DESC, incident_count DESC
-        LIMIT $1
-      `, [limit]);
+        LIMIT ?
+      `);
 
-      return result.rows;
+      return stmt.all(limit);
     } catch (error) {
       console.error("[InteractionModel] Error getting effective suggestions:", error);
       return [];
     }
   }
 }
-
-// PostgreSQL initialization is handled automatically in postgres-database.ts
