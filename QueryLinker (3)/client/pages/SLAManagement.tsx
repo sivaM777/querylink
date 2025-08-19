@@ -362,7 +362,7 @@ export default function SLAManagement() {
         doc.text('Active Escalations', 20, yPosition);
         yPosition += 10;
 
-        const escalationsData = slaData.escalations.map((escalation: any) => [
+        const escalationsData = slaData.escalations.map((escalation: any, index: number) => [
           escalation.incident,
           escalation.title,
           escalation.priority,
