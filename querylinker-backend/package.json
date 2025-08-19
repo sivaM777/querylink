@@ -1,0 +1,42 @@
+
+{
+  "name": "querylinker-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch server/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "vitest --run",
+    "db:migrate": "node server/database/sqlite-export.js",
+    "db:complete-migrate": "node server/database/complete-migration.js"
+  },
+  "dependencies": {
+    "@sendgrid/mail": "^8.1.5",
+    "axios": "^1.11.0",
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^9.2.2",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.0",
+    "express": "^4.18.2",
+    "google-auth-library": "^10.2.1",
+    "googleapis": "^155.0.1",
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^7.0.5",
+    "pg": "^8.16.3",
+    "sqlite3": "^5.1.6",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/better-sqlite3": "^7.6.8",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^22.5.5",
+    "@types/pg": "^8.15.5",
+    "tsx": "^4.7.0",
+    "typescript": "^5.5.3",
+    "vitest": "^3.1.4"
+  }
+}
