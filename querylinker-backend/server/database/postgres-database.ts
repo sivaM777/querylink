@@ -1,112 +1,92 @@
-import { Pool, PoolClient, QueryResult } from 'pg';
 import { readFileSync, existsSync } from "fs";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
+import * as Database from "better-sqlite3";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+const sqliteDbPath = join(__dirname, "../data/querylinker.db");
 
-// PostgreSQL connection pool
-let pool: Pool | null = null;
+// SQLite database instance
+let db: Database.Database;
 
-export function initializeDatabase(): Pool {
+export function initializeDatabase(): Database.Database {
   try {
-    if (pool) {
-      return pool;
+    if (db) {
+      return db;
     }
 
-    const databaseUrl = process.env.DATABASE_URL;
-    if (!databaseUrl) {
-      throw new Error("DATABASE_URL environment variable is not set");
-    }
+    console.log("[Database] Connecting to SQLite database...");
 
-    console.log("[Database] Connecting to PostgreSQL database...");
-    
-    pool = new Pool({
-      connectionString: databaseUrl,
-      ssl: {
-        rejectUnauthorized: false
-      },
-      max: 20,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000,
-    });
+    db = new Database(sqliteDbPath);
 
-    // Test the connection
-    pool.connect()
-      .then((client) => {
-        console.log("[Database] PostgreSQL connection established successfully");
-        client.release();
-        return initializeSchema();
-      })
-      .catch((error) => {
-        console.error("[Database] Failed to connect to PostgreSQL:", error);
-        throw error;
-      });
+    // Enable foreign key constraints
+    db.pragma('foreign_keys = ON');
 
-    return pool;
+    console.log("[Database] SQLite connection established successfully");
+    return initializeSchema();
+
   } catch (error) {
-    console.error("[Database] Failed to initialize PostgreSQL database:", error);
+    console.error("[Database] Failed to initialize SQLite database:", error);
     throw error;
   }
 }
 
-async function initializeSchema(): Promise<void> {
-  if (!pool) {
-    throw new Error("Database pool not initialized");
+async function initializeSchema(): Promise<Database.Database> {
+  if (!db) {
+    throw new Error("Database not initialized");
   }
 
-  const client = await pool.connect();
   try {
-    console.log("[Database] Initializing PostgreSQL schema...");
-    
+    console.log("[Database] Initializing SQLite schema...");
+
     // Create the main tables
-    await client.query(`
+    db.exec(`
       CREATE TABLE IF NOT EXISTS users (
-        user_id SERIAL PRIMARY KEY,
-        email VARCHAR(255) UNIQUE NOT NULL,
-        password_hash VARCHAR(255),
-        full_name VARCHAR(255) NOT NULL,
-        role VARCHAR(50) DEFAULT 'user',
+        user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE NOT NULL,
+        password_hash TEXT,
+        full_name TEXT NOT NULL,
+        role TEXT DEFAULT 'user',
         avatar_url TEXT,
-        provider VARCHAR(50),
-        provider_id VARCHAR(255),
+        provider TEXT,
+        provider_id TEXT,
         email_verified BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         last_login TIMESTAMP,
-        preferences JSONB DEFAULT '{}'
+        preferences TEXT DEFAULT '{}'
       );
     `);
 
-    await client.query(`
+    db.exec(`
       CREATE TABLE IF NOT EXISTS user_sessions (
-        session_id SERIAL PRIMARY KEY,
+        session_id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER REFERENCES users(user_id) ON DELETE CASCADE,
-        token VARCHAR(500) UNIQUE NOT NULL,
+        token TEXT UNIQUE NOT NULL,
         expires_at TIMESTAMP NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         last_activity TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
-    await client.query(`
+    db.exec(`
       CREATE TABLE IF NOT EXISTS password_reset_tokens (
-        token_id SERIAL PRIMARY KEY,
+        token_id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER REFERENCES users(user_id) ON DELETE CASCADE,
-        token VARCHAR(255) UNIQUE NOT NULL,
+        token TEXT UNIQUE NOT NULL,
         expires_at TIMESTAMP NOT NULL,
         used BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
-    await client.query(`
+    db.exec(`
       CREATE TABLE IF NOT EXISTS cached_suggestions (
-        id SERIAL PRIMARY KEY,
-        incident_number VARCHAR(255),
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        incident_number TEXT,
         keywords TEXT NOT NULL,
-        keywords_hash VARCHAR(64) UNIQUE NOT NULL,
+        keywords_hash TEXT UNIQUE NOT NULL,
         suggestions_json TEXT NOT NULL,
         search_time_ms INTEGER,
         total_found INTEGER,
@@ -115,48 +95,48 @@ async function initializeSchema(): Promise<void> {
       );
     `);
 
-    await client.query(`
+    db.exec(`
       CREATE TABLE IF NOT EXISTS user_interactions (
-        interaction_id SERIAL PRIMARY KEY,
-        user_id VARCHAR(255),
-        incident_number VARCHAR(255) NOT NULL,
-        suggestion_id VARCHAR(255) NOT NULL,
-        system VARCHAR(100) NOT NULL,
+        interaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id TEXT,
+        incident_number TEXT NOT NULL,
+        suggestion_id TEXT NOT NULL,
+        system TEXT NOT NULL,
         suggestion_title TEXT,
         suggestion_link TEXT,
-        action_type VARCHAR(50) DEFAULT 'link',
+        action_type TEXT DEFAULT 'link',
         timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
     // Create indexes for better performance
-    await client.query(`
+    db.exec(`
       CREATE INDEX IF NOT EXISTS idx_user_sessions_token ON user_sessions(token);
     `);
-    
-    await client.query(`
+
+    db.exec(`
       CREATE INDEX IF NOT EXISTS idx_user_sessions_last_activity ON user_sessions(last_activity);
     `);
-    
-    await client.query(`
+
+    db.exec(`
       CREATE INDEX IF NOT EXISTS idx_cached_suggestions_hash ON cached_suggestions(keywords_hash);
     `);
-    
-    await client.query(`
+
+    db.exec(`
       CREATE INDEX IF NOT EXISTS idx_cached_suggestions_expires ON cached_suggestions(expires_at);
     `);
 
     // Create additional tables for the QueryLinker functionality
-    await client.query(`
+    db.exec(`
       CREATE TABLE IF NOT EXISTS system_sync_config (
-        id SERIAL PRIMARY KEY,
-        system VARCHAR(100) UNIQUE NOT NULL,
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        system TEXT UNIQUE NOT NULL,
         enabled BOOLEAN DEFAULT FALSE,
         api_endpoint TEXT,
-        auth_config JSONB,
+        auth_config TEXT DEFAULT '{}',
         sync_interval INTEGER DEFAULT 3600,
         last_sync TIMESTAMP,
-        last_sync_status VARCHAR(50),
+        last_sync_status TEXT,
         last_sync_error TEXT,
         total_synced INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -164,74 +144,73 @@ async function initializeSchema(): Promise<void> {
       );
     `);
 
-    await client.query(`
+    db.exec(`
       CREATE TABLE IF NOT EXISTS solutions (
-        id VARCHAR(255) PRIMARY KEY,
-        system VARCHAR(100) NOT NULL,
-        external_id VARCHAR(255),
+        id TEXT PRIMARY KEY,
+        system TEXT NOT NULL,
+        external_id TEXT,
         title TEXT NOT NULL,
         description TEXT,
         content TEXT,
         snippet TEXT,
-        status VARCHAR(50),
-        priority VARCHAR(50),
-        author VARCHAR(255),
-        assignee VARCHAR(255),
+        status TEXT,
+        priority TEXT,
+        author TEXT,
+        assignee TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         resolved_at TIMESTAMP,
         external_url TEXT,
-        tags JSONB DEFAULT '[]',
+        tags TEXT DEFAULT '[]',
         resolution TEXT,
-        steps JSONB DEFAULT '[]',
-        related_issues JSONB DEFAULT '[]',
-        attachments JSONB DEFAULT '[]',
+        steps TEXT DEFAULT '[]',
+        related_issues TEXT DEFAULT '[]',
+        attachments TEXT DEFAULT '[]',
         keywords TEXT,
-        category VARCHAR(100),
-        severity VARCHAR(50),
-        metadata JSONB DEFAULT '{}',
-        sync_status VARCHAR(50) DEFAULT 'active'
+        category TEXT,
+        severity TEXT,
+        metadata TEXT DEFAULT '{}',
+        sync_status TEXT DEFAULT 'active'
       );
     `);
 
-    await client.query(`
+    db.exec(`
       CREATE TABLE IF NOT EXISTS solution_chunks (
-        id VARCHAR(255) PRIMARY KEY,
-        solution_id VARCHAR(255) REFERENCES solutions(id) ON DELETE CASCADE,
+        id TEXT PRIMARY KEY,
+        solution_id TEXT REFERENCES solutions(id) ON DELETE CASCADE,
         chunk_index INTEGER NOT NULL,
         content TEXT NOT NULL,
-        embedding JSONB
+        embedding TEXT
       );
     `);
 
     // Create indexes for better performance
-    await client.query(`
+    db.exec(`
       CREATE INDEX IF NOT EXISTS idx_solutions_system ON solutions(system);
     `);
 
-    await client.query(`
+    db.exec(`
       CREATE INDEX IF NOT EXISTS idx_solutions_status ON solutions(status);
     `);
 
-    await client.query(`
+    db.exec(`
       CREATE INDEX IF NOT EXISTS idx_solutions_sync_status ON solutions(sync_status);
     `);
 
-    await client.query(`
+    db.exec(`
       CREATE INDEX IF NOT EXISTS idx_solution_chunks_solution_id ON solution_chunks(solution_id);
     `);
 
-    console.log("[Database] PostgreSQL schema initialized successfully");
+    console.log("[Database] SQLite schema initialized successfully");
+    return db;
   } catch (error) {
     console.error("[Database] Failed to initialize schema:", error);
     throw error;
-  } finally {
-    client.release();
   }
 }
 
-export function getDatabase(): Pool | null {
-  if (!pool) {
+export function getDatabase(): Database.Database | null {
+  if (!db) {
     try {
       return initializeDatabase();
     } catch (error) {
@@ -239,41 +218,52 @@ export function getDatabase(): Pool | null {
       return null;
     }
   }
-  return pool;
+  return db;
 }
 
 // Helper function to execute queries safely
-export async function executeQuery(text: string, params?: any[]): Promise<QueryResult> {
-  const db = getDatabase();
+export async function executeQuery(query: string, params: any[] = []): Promise<Database.RunResult> {
   if (!db) {
-    throw new Error("Database not available");
+    await initializeDatabase();
   }
-  
-  const client = await db.connect();
+
   try {
-    const result = await client.query(text, params);
+    // Convert PostgreSQL-style parameterized queries ($1, $2) to SQLite style (?, ?)
+    const sqliteQuery = query.replace(/\$(\d+)/g, '?');
+
+    const stmt = db.prepare(sqliteQuery);
+    const result = stmt.run(...params);
     return result;
-  } finally {
-    client.release();
+  } catch (error) {
+    console.error('[Database] Query error:', error);
+    throw error;
   }
 }
 
 // Helper function to execute prepared statements
 export class PreparedStatement {
-  constructor(private query: string) {}
+  private query: string;
 
-  async run(...params: any[]): Promise<QueryResult> {
+  constructor(query: string) {
+    this.query = query;
+  }
+
+  async run(...params: any[]): Promise<Database.RunResult> {
     return executeQuery(this.query, params);
   }
 
   async get(...params: any[]): Promise<any> {
-    const result = await executeQuery(this.query, params);
-    return result.rows[0] || null;
+    const sqliteQuery = this.query.replace(/\$(\d+)/g, '?');
+    const stmt = db.prepare(sqliteQuery);
+    const row = stmt.get(...params);
+    return row;
   }
 
   async all(...params: any[]): Promise<any[]> {
-    const result = await executeQuery(this.query, params);
-    return result.rows;
+    const sqliteQuery = this.query.replace(/\$(\d+)/g, '?');
+    const stmt = db.prepare(sqliteQuery);
+    const rows = stmt.all(...params);
+    return rows;
   }
 }
 
@@ -286,10 +276,21 @@ export class DatabaseWrapper {
   async exec(query: string): Promise<void> {
     await executeQuery(query);
   }
+
+  async query(sql: string, params: any[] = []): Promise<any> {
+    const sqliteQuery = sql.replace(/\$(\d+)/g, '?');
+    if (sqliteQuery.trim().toLowerCase().startsWith('select')) {
+      const stmt = db.prepare(sqliteQuery);
+      const rows = stmt.all(...params);
+      return { rows, rowCount: rows.length };
+    } else {
+      return executeQuery(sql, params);
+    }
+  }
 }
 
 // Export a database instance for compatibility
-export const db = new DatabaseWrapper();
+export const dbInstance = new DatabaseWrapper();
 
 // Initialize database on module load
 try {
