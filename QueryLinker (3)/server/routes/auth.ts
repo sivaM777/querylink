@@ -247,7 +247,8 @@ export const handleLogout: RequestHandler = async (req, res) => {
 
     if (token) {
       try {
-        await executeQuery("DELETE FROM user_sessions WHERE session_id = $1", [token]);
+        // JWT tokens are stored in the token column, not session_id
+        await executeQuery("DELETE FROM user_sessions WHERE token = $1", [token]);
       } catch (dbError) {
         console.error("Database error during logout:", dbError);
         // Continue with logout even if database cleanup fails
